@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   chmodSync,
+  existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -11,7 +12,9 @@ import {
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { run, type Io } from '../src/main.js';
+import { parseConfig } from '../src/config.js';
 import { runGit } from '../src/git.js';
+import { resolveOptions } from '../src/options.js';
 
 /** Collects what the CLI wrote, so assertions can look at both streams. */
 function capture(): Io & { out: string; err: string } {
@@ -321,5 +324,221 @@ describe('--config-write-schema', () => {
     const io = capture();
     expect(await run(['--config-write-schema='], { io, cwd: repo, env })).toBe(2);
     expect(io.err).toMatch(/needs a path/);
+  });
+
+  it('is a command like the others, so it cannot be combined with one', async () => {
+    const io = capture();
+    expect(await run(['--config-init', '--config-write-schema=-'], { io, cwd: repo, env })).toBe(2);
+    expect(io.err).toMatch(/--config-init and --config-write-schema are mutually exclusive/);
+  });
+});
+
+describe('--config-reset', () => {
+  it('replaces an existing config with the defaults', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'gitcim-reset-'));
+    const path = join(dir, 'config.toml');
+    writeFileSync(path, 'group = 4\n');
+
+    const io = capture();
+    const at = { GITCIM_CONFIG_FILE: path };
+    expect(await run(['--config-reset'], { io, cwd: repo, env: at })).toBe(0);
+    expect(io.err).toBe(`gitcim: wrote ${path}\n`);
+    expect(readFileSync(path, 'utf8')).toMatch(/\ngroup = 0\n/);
+
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('writes one where there was none', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'gitcim-reset-'));
+    const path = join(dir, 'config.toml');
+
+    const io = capture();
+    expect(
+      await run(['--config-reset'], { io, cwd: repo, env: { GITCIM_CONFIG_FILE: path } }),
+    ).toBe(0);
+    expect(existsSync(path)).toBe(true);
+
+    rmSync(dir, { recursive: true, force: true });
+  });
+});
+
+describe('--config-edit', () => {
+  /** Stands in for the editor, recording its argv and doing `edit` to the file. */
+  function editor(edit: (path: string) => void = () => {}, status = 0) {
+    const calls: string[][] = [];
+    return {
+      calls,
+      launch: (command: string, args: string[]) => {
+        calls.push([command, ...args]);
+        edit(args[args.length - 1] ?? '');
+        return Promise.resolve(status);
+      },
+    };
+  }
+
+  function editing(path: string, edit: (text: string) => string) {
+    return () => writeFileSync(path, edit(readFileSync(path, 'utf8')));
+  }
+
+  it('creates the file commented out, then opens it', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'gitcim-edit-'));
+    const path = join(dir, 'config.toml');
+    const at = { GITCIM_CONFIG_FILE: path, EDITOR: 'vi -f' };
+    // What the "editor" does: enable one setting, the one-character edit.
+    const ed = editor(editing(path, (text) => text.replace('\n#group = 0', '\ngroup = 1')));
+
+    const io = capture();
+    expect(await run(['--config-edit'], { io, cwd: repo, env: at, launchEditor: ed.launch })).toBe(
+      0,
+    );
+    expect(ed.calls).toEqual([['vi', '-f', path]]);
+    expect(io.err).toBe(`gitcim: wrote ${path}\n`);
+
+    // The edit is what the next run uses.
+    const next = capture();
+    await run(['--include', 'src'], { io: next, cwd: repo, env: at });
+    expect(next.out).toBe('add: src/new.py; update: src/main.py; remove: src/old.py\n');
+
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('leaves an existing config alone', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'gitcim-edit-'));
+    const path = join(dir, 'config.toml');
+    writeFileSync(path, 'group = 4\n');
+    const ed = editor();
+
+    const io = capture();
+    await run(['--config-edit'], {
+      io,
+      cwd: repo,
+      env: { GITCIM_CONFIG_FILE: path, VISUAL: 'ed' },
+      launchEditor: ed.launch,
+    });
+    expect(ed.calls).toEqual([['ed', path]]);
+    expect(io.err).toBe('');
+    expect(readFileSync(path, 'utf8')).toBe('group = 4\n');
+
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('reports a typo before the next commit does', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'gitcim-edit-'));
+    const path = join(dir, 'config.toml');
+    const ed = editor(editing(path, (text) => text.replace('\n#and = false', '\nand = maybe')));
+
+    const io = capture();
+    expect(
+      await run(['--config-edit'], {
+        io,
+        cwd: repo,
+        env: { GITCIM_CONFIG_FILE: path, EDITOR: 'vi' },
+        launchEditor: ed.launch,
+      }),
+    ).toBe(2);
+    expect(io.err).toMatch(/unsupported value: maybe/);
+
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('passes on an editor that failed', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'gitcim-edit-'));
+    const path = join(dir, 'config.toml');
+    const ed = editor(() => {}, 3);
+
+    const io = capture();
+    expect(
+      await run(['--config-edit'], {
+        io,
+        cwd: repo,
+        env: { GITCIM_CONFIG_FILE: path, EDITOR: 'vi' },
+        launchEditor: ed.launch,
+      }),
+    ).toBe(1);
+    expect(io.err).toContain('gitcim: vi exited with status 3\n');
+
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('needs an editor, and writes nothing without one', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'gitcim-edit-'));
+    const path = join(dir, 'config.toml');
+
+    const io = capture();
+    expect(await run(['--config-edit'], { io, cwd: repo, env: { GITCIM_CONFIG_FILE: path } })).toBe(
+      2,
+    );
+    expect(io.err).toMatch(/no editor: set \$GITCIM_EDITOR, \$VISUAL or \$EDITOR/);
+    expect(existsSync(path)).toBe(false);
+
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('has nothing to edit when the config comes from stdin', async () => {
+    const io = capture();
+    expect(
+      await run(['--config-edit'], {
+        io,
+        cwd: repo,
+        env: { GITCIM_CONFIG_FILE: '-', EDITOR: 'vi' },
+      }),
+    ).toBe(2);
+    expect(io.err).toMatch(/names no file to edit/);
+  });
+});
+
+describe('--config-print', () => {
+  it('reports every setting, and where its value came from', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'gitcim-print-'));
+    const path = join(dir, 'config.toml');
+    writeFileSync(path, 'group = 1\n');
+
+    const io = capture();
+    expect(
+      await run(['--config-print', '--item-separator= | ', '--no-group'], {
+        io,
+        cwd: repo,
+        env: { GITCIM_CONFIG_FILE: path },
+      }),
+    ).toBe(0);
+
+    // A flag beats the file it overrode, and says so.
+    expect(io.out).toMatch(/## Source: --no-group\n#?group = 0\n/);
+    expect(io.out).toMatch(/## Source: --item-separator\nitem-separator = " \| "\n/);
+    expect(io.out).toMatch(/## Source: default\nlist-indent = 4\n/);
+    expect(io.err).toBe('');
+
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('credits the config file by name', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'gitcim-print-'));
+    const path = join(dir, 'config.toml');
+    writeFileSync(path, 'group = 3\n');
+
+    const io = capture();
+    await run(['--config-print'], { io, cwd: repo, env: { GITCIM_CONFIG_FILE: path } });
+    expect(io.out).toContain(`## Source: ${path}\ngroup = 3\n`);
+
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('prints a file gitcim reads back unchanged', async () => {
+    const io = capture();
+    await run(['--config-print', '--group=2', '--action-order=chmod'], { io, cwd: repo, env });
+    expect(resolveOptions(parseConfig(io.out, 'printed'))).toEqual(
+      resolveOptions({ group: 2, actionOrder: ['chmod', 'add', 'update', 'rename', 'remove'] }),
+    );
+  });
+
+  it('reads a piped-in config like any other run does', async () => {
+    const io = capture();
+    await run(['--config-print'], {
+      io,
+      cwd: repo,
+      env: { GITCIM_CONFIG_FILE: '-' },
+      readStdin: () => Promise.resolve('and = true\n'),
+    });
+    expect(io.out).toContain('## Source: <stdin>\nand = true\n');
   });
 });

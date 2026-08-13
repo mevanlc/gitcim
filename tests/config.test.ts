@@ -10,6 +10,9 @@ import {
   loadConfig,
   parseConfig,
   renderConfig,
+  renderEffectiveConfig,
+  resolveEditor,
+  spawnEditor,
   writeOut,
 } from '../src/config.js';
 import { GitcimError } from '../src/errors.js';
@@ -161,6 +164,68 @@ describe('renderConfig', () => {
     for (const line of renderConfig({ commented: false }).split('\n')) {
       expect(line.length, line).toBeLessThanOrEqual(80);
     }
+  });
+});
+
+describe('renderEffectiveConfig', () => {
+  const options = resolveOptions({
+    group: 2,
+    itemSeparator: ' | ',
+    actionOrder: ['chmod', 'add', 'update', 'rename', 'remove'],
+  });
+
+  it('round-trips: what it prints parses back to what it was given', () => {
+    const text = renderEffectiveConfig(options, new Map());
+    expect(resolveOptions(parseConfig(text, 'printed'))).toEqual(options);
+  });
+
+  it('attributes every setting, defaulting to "default"', () => {
+    const text = renderEffectiveConfig(options, new Map([['group', '--group']]));
+    expect(text).toContain('## Source: --group\ngroup = 2\n');
+    expect(text).toContain('## Source: default\nlist-indent = 4\n');
+    expect(text.match(/^## Source: /gm)?.length).toBe(OPTION_SPECS.length);
+  });
+});
+
+describe('resolveEditor', () => {
+  it('prefers GITCIM_EDITOR, then VISUAL, then EDITOR', () => {
+    const all = { GITCIM_EDITOR: 'a', VISUAL: 'b', EDITOR: 'c' };
+    expect(resolveEditor(all).command).toBe('a');
+    expect(resolveEditor({ VISUAL: 'b', EDITOR: 'c' }).command).toBe('b');
+    expect(resolveEditor({ EDITOR: 'c' }).command).toBe('c');
+  });
+
+  it('keeps the arguments an editor was given', () => {
+    expect(resolveEditor({ EDITOR: '  code --wait  ' })).toEqual({
+      command: 'code',
+      args: ['--wait'],
+    });
+  });
+
+  it('skips a variable set to nothing', () => {
+    expect(resolveEditor({ VISUAL: '   ', EDITOR: 'vi' }).command).toBe('vi');
+  });
+
+  it('says which variables it looked at when there is no editor', () => {
+    expect(() => resolveEditor({})).toThrow('no editor: set $GITCIM_EDITOR, $VISUAL or $EDITOR');
+    try {
+      resolveEditor({});
+    } catch (err) {
+      expect((err as GitcimError).code).toBe(2);
+    }
+  });
+});
+
+describe('spawnEditor', () => {
+  it("resolves with the editor's exit status", async () => {
+    await expect(spawnEditor('sh', ['-c', 'exit 0'])).resolves.toBe(0);
+    await expect(spawnEditor('sh', ['-c', 'exit 3'])).resolves.toBe(3);
+  });
+
+  it('says when the editor cannot be run at all', async () => {
+    await expect(spawnEditor('gitcim-no-such-editor', [])).rejects.toThrow(
+      /cannot run gitcim-no-such-editor/,
+    );
   });
 });
 

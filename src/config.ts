@@ -1,3 +1,4 @@
+import { spawn } from 'node:child_process';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
@@ -20,6 +21,9 @@ export const CONFIG_ENV = 'GITCIM_CONFIG_FILE';
 
 /** Stands for stdin when reading a config and stdout when writing one. */
 export const STDIO = '-';
+
+/** Consulted in order for the editor `--config-edit` opens. */
+export const EDITOR_ENV = ['GITCIM_EDITOR', 'VISUAL', 'EDITOR'] as const;
 
 const COMMENT_WIDTH = 78;
 
@@ -87,6 +91,37 @@ async function readStdin(): Promise<string> {
   return Buffer.concat(chunks).toString('utf8');
 }
 
+// ---------------------------------------------------------------- editing
+
+export type EditorLauncher = (command: string, args: string[]) => Promise<number>;
+
+/**
+ * The editor `--config-edit` should run, split into a command and its arguments.
+ *
+ * A value such as `code --wait` works; shell quoting does not, so an editor whose
+ * path contains a space needs a wrapper script — the same bargain git's
+ * `core.editor` offers, without the shell it would otherwise take to honour.
+ */
+export function resolveEditor(env: NodeJS.ProcessEnv): { command: string; args: string[] } {
+  for (const name of EDITOR_ENV) {
+    const value = env[name]?.trim();
+    if (value === undefined || value === '') continue;
+    const [command = '', ...args] = value.split(/\s+/);
+    return { command, args };
+  }
+
+  const names = EDITOR_ENV.map((name) => `$${name}`);
+  throw new GitcimError(`no editor: set ${names.slice(0, -1).join(', ')} or ${names.at(-1)}`, 2);
+}
+
+/** Run an editor against the user's terminal and resolve to its exit status. */
+export const spawnEditor: EditorLauncher = (command, args) =>
+  new Promise((resolve, reject) => {
+    const child = spawn(command, args, { stdio: 'inherit', shell: false });
+    child.on('error', (err) => reject(new GitcimError(`cannot run ${command}: ${err.message}`, 1)));
+    child.on('close', (code) => resolve(code ?? 1));
+  });
+
 /** Parse config text, reporting problems against `source` (a path, or `<stdin>`). */
 export function parseConfig(text: string, source: string): Partial<Options> {
   let table: Map<string, TomlValue>;
@@ -135,6 +170,42 @@ function validate(spec: OptionSpec, value: TomlValue, source: string): TomlValue
 
 // ---------------------------------------------------------------- writing
 
+/** Where a setting's effective value came from, keyed by flag name. */
+export type ConfigOrigins = ReadonlyMap<string, string>;
+
+interface SettingsRender {
+  /** The opening comment, below the shared title. */
+  intro: string[];
+  value: (spec: OptionSpec) => string | number | boolean | readonly string[];
+  /** Rendered as a `## Source:` line, when a setting has one to report. */
+  origin?: (spec: OptionSpec) => string | undefined;
+  commented: boolean;
+}
+
+/** The shared shape of every generated config file: prose, then one setter. */
+function renderSettings({ intro, value, origin, commented }: SettingsRender): string {
+  const setter = commented ? '#' : '';
+  const lines = ['## gitcim configuration', '##', ...intro];
+
+  for (const section of SECTIONS) {
+    lines.push('', `## === ${section} ===`);
+    for (const spec of OPTION_SPECS.filter((s) => s.section === section)) {
+      const from = origin?.(spec);
+      lines.push(
+        '',
+        ...wrap(`${spec.help}.`),
+        ...wrap(valueDoc(spec)),
+        `## Flag: ${flagSyntax(spec)}`,
+        // Unwrapped: a source is one word, and a long path reads worse split.
+        ...(from === undefined ? [] : [`## Source: ${from}`]),
+        `${setter}${spec.flag} = ${toToml(value(spec))}`,
+      );
+    }
+  }
+
+  return lines.join('\n') + '\n';
+}
+
 /**
  * Render a config file of defaults.
  *
@@ -143,33 +214,39 @@ function validate(spec: OptionSpec, value: TomlValue, source: string): TomlValue
  * and the file still says what everything does.
  */
 export function renderConfig({ commented }: { commented: boolean }): string {
-  const setter = commented ? '#' : '';
-  const lines = [
-    '## gitcim configuration',
-    '##',
-    ...wrap(
-      `Every setting below is gitcim's default. Each has a command-line flag of the same name, and the flag wins over this file.`,
-    ),
-    '##',
-    ...wrap(
-      `Read from $${CONFIG_ENV} when that is set, otherwise from \${XDG_CONFIG_HOME:-~/.config}/gitcim/config.toml.`,
-    ),
-  ];
+  return renderSettings({
+    commented,
+    value: (spec) => spec.default,
+    intro: [
+      ...wrap(
+        `Every setting below is gitcim's default. Each has a command-line flag of the same name, and the flag wins over this file.`,
+      ),
+      '##',
+      ...wrap(
+        `Read from $${CONFIG_ENV} when that is set, otherwise from \${XDG_CONFIG_HOME:-~/.config}/gitcim/config.toml.`,
+      ),
+    ],
+  });
+}
 
-  for (const section of SECTIONS) {
-    lines.push('', `## === ${section} ===`);
-    for (const spec of OPTION_SPECS.filter((s) => s.section === section)) {
-      lines.push(
-        '',
-        ...wrap(`${spec.help}.`),
-        ...wrap(valueDoc(spec)),
-        `## Flag: ${flagSyntax(spec)}`,
-        `${setter}${spec.flag} = ${toToml(spec.default)}`,
-      );
-    }
-  }
-
-  return lines.join('\n') + '\n';
+/**
+ * Render the configuration a run is actually using, noting where each value
+ * came from. The result is itself a valid config file, so a run worth keeping
+ * can be saved as one.
+ */
+export function renderEffectiveConfig(values: Options, origins: ConfigOrigins): string {
+  return renderSettings({
+    commented: false,
+    value: (spec) => values[spec.key],
+    origin: (spec) => origins.get(spec.flag) ?? 'default',
+    intro: [
+      ...wrap(
+        `The configuration in effect: gitcim's defaults, overlaid with the config file, overlaid with the flags of this run.`,
+      ),
+      '##',
+      ...wrap(`This is a valid config file — save it to keep these settings.`),
+    ],
+  });
 }
 
 /** What a setting accepts, in a sentence, for the generated file's prose. */

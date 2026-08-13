@@ -289,7 +289,13 @@ Precedence runs defaults < config file < flags.
 ```bash
 gitcim --config-init        # write a config file that sets every property to its default
 gitcim --config-init-unset  # the same file, with every setter line commented out
+gitcim --config-reset       # overwrite the config file with defaults
+gitcim --config-edit        # open the config file in $GITCIM_EDITOR / $VISUAL / $EDITOR
+gitcim --config-print       # print the configuration in effect
 ```
+
+The `--config-*` commands are mutually exclusive: each ends the run, so two of them
+cannot both be what was meant.
 
 Both forms emit an explanatory comment block above each property. Prose uses `##`;
 a disabled setter uses a bare `#`, so enabling one is a one-character edit.
@@ -322,10 +328,17 @@ overwrites freely, since the schema is derived and the path was just named.
 integers, booleans and arrays of strings, which is the whole config surface. Tables,
 floats and dates are errors rather than a runtime dependency.
 
-## not yet implemented
+### editing and printing
 
-```bash
-gitcim --config-edit  # open the config file in $GITCIM_EDITOR / $VISUAL / $EDITOR
-gitcim --config-print # print the configuration in effect
-gitcim --config-reset # overwrite the config file with defaults
-```
+`--config-edit` creates the file from `--config-init-unset` when it does not exist —
+commented out, so opening an editor and quitting leaves gitcim on its defaults,
+including ones that change in a later version — then runs the editor and parses the
+result, so a typo is reported while the editor is still in reach. The editor string is
+split on whitespace (`code --wait` works); it is not run through a shell, so an editor
+path containing a space needs a wrapper script, as it does for git's `core.editor`.
+`GITCIM_CONFIG_FILE=-` has no file to edit and is an error.
+
+`--config-print` renders the effective options — defaults, then the file, then this
+run's flags — through the same generator, so its output is itself a valid config file.
+Each setting carries a `## Source:` line naming `default`, the config file's path, or
+the flag that set it (`--no-group` when that is what was passed).

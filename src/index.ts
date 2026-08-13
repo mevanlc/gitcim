@@ -14,9 +14,13 @@ export {
   CONFIG_ENV,
   configLocation,
   configSchema,
+  EDITOR_ENV,
   loadConfig,
   parseConfig,
   renderConfig,
+  renderEffectiveConfig,
+  resolveEditor,
+  type ConfigOrigins,
 } from './config.js';
 export { parseToml, TomlError, type TomlValue } from './toml.js';
 export { GitcimError } from './errors.js';

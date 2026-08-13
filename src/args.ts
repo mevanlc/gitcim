@@ -1,5 +1,5 @@
 import { parseArgs, type ParseArgsConfig } from 'node:util';
-import { CONFIG_ENV } from './config.js';
+import { CONFIG_ENV, EDITOR_ENV } from './config.js';
 import { GitcimError } from './errors.js';
 import {
   flagSyntax,
@@ -41,6 +41,9 @@ export interface CommandSpec {
 export const COMMAND_SPECS: readonly CommandSpec[] = [
   { flag: 'config-init', help: 'Write a config file of defaults, then exit' },
   { flag: 'config-init-unset', help: 'The same file with every setting commented out' },
+  { flag: 'config-reset', help: 'Overwrite the config file with the defaults' },
+  { flag: 'config-edit', help: 'Open the config file in an editor, then check it' },
+  { flag: 'config-print', help: 'Print the configuration this run would use' },
   {
     flag: 'config-write-schema',
     placeholder: 'PATH',
@@ -101,6 +104,9 @@ Environment:
     ${CONFIG_ENV.padEnd(width)}Config file to read, or to write with --config-init.
     ${''.padEnd(width)}"-" means stdin when reading, stdout when writing.
     ${''.padEnd(width)}Defaults to ~/.config/gitcim/config.toml.
+    ${EDITOR_ENV[0].padEnd(width)}Editor for --config-edit; then ${EDITOR_ENV.slice(1)
+      .map((name) => `$${name}`)
+      .join(', then ')}.
 `;
 }
 

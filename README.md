@@ -113,6 +113,9 @@ Flags override the file, which overrides the defaults.
 ```bash
 gitcim --config-init         # write a config file of defaults, fully commented
 gitcim --config-init-unset   # the same file, with every setting commented out
+gitcim --config-edit         # open the config file in an editor, then check it
+gitcim --config-print        # print the settings this run would use, and their source
+gitcim --config-reset        # overwrite the config file with the defaults
 ```
 
 ```toml
@@ -135,9 +138,23 @@ GITCIM_CONFIG_FILE=- gitcim --config-init > gitcim.toml
 ```
 
 A file named by `GITCIM_CONFIG_FILE` must exist; the default path is optional.
-`--config-init` will not overwrite an existing config — delete it, or write elsewhere.
-Unknown settings, wrong types and syntax errors are reported with their line and
-stop the run rather than being skipped.
+`--config-init` will not overwrite an existing config — `--config-reset` is the
+command that does. Unknown settings, wrong types and syntax errors are reported with
+their line and stop the run rather than being skipped.
+
+`--config-edit` opens the file in `$GITCIM_EDITOR`, `$VISUAL` or `$EDITOR`, creating
+it commented-out first if it does not exist, and parses what comes back so a typo
+surfaces while the editor is still open. `--config-print` writes the whole
+configuration — defaults, then the file, then this run's flags — to stdout as a config
+file, with each setting's source noted above it:
+
+```toml
+## Between items.
+## A string.
+## Flag: --item-separator=S
+## Source: --item-separator
+item-separator = " | "
+```
 
 `gitcim --config-write-schema PATH` (or `-`) writes a JSON Schema for the file,
 generated from the same option table, for editors that check TOML against one.
