@@ -1,12 +1,50 @@
 {
   "name": "gitcim",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "keywords": [],
+  "version": "0.1.0",
+  "description": "Mechanical commit messages for staged changes. No LLM, no guessing — just what changed.",
+  "keywords": [
+    "git",
+    "commit",
+    "commit-message",
+    "cli",
+    "offline"
+  ],
   "license": "MIT",
-  "type": "commonjs"
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "gitcim": "./dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^25.9.1",
+    "@vitest/coverage-v8": "4.1.9",
+    "eslint": "^10.4.0",
+    "eslint-config-prettier": "10.1.8",
+    "globals": "^17.6.0",
+    "prettier": "3.9.4",
+    "tsup": "^8.5.1",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.59.4",
+    "vitest": "^4.1.6"
+  }
 }
