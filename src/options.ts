@@ -8,8 +8,10 @@ export const ACTION_SLOTS = [
   'chmod',
 ] as const satisfies readonly ActionSlot[];
 
-/** Which `--help` section a flag is listed under. */
+/** Which `--help` section — and which config-file block — a flag belongs to. */
 export type Section = 'Wording' | 'Layout';
+
+export const SECTIONS: readonly Section[] = ['Wording', 'Layout'];
 
 /** The Options fields of a given value type, so each spec's default is checked. */
 type KeysOfType<T> = { [K in keyof Options]: Options[K] extends T ? K : never }[keyof Options];
@@ -212,6 +214,13 @@ export const SPECS_BY_FLAG: ReadonlyMap<string, OptionSpec> = new Map(
 export const DEFAULT_OPTIONS: Options = Object.freeze(
   Object.fromEntries(OPTION_SPECS.map((spec) => [spec.key, spec.default])),
 ) as unknown as Options;
+
+/** How a flag is written in help and in the config file: `--list-indent=N`, `--and, --no-and`. */
+export function flagSyntax(spec: OptionSpec): string {
+  const value = spec.kind === 'boolean' ? '' : `=${spec.placeholder}`;
+  const negated = 'negatable' in spec && spec.negatable ? `, --${spec.negatable}` : '';
+  return `--${spec.flag}${value}${negated}`;
+}
 
 /** What a `--no-…` flag resets its option to. */
 export function negatedValue(spec: OptionSpec): boolean | number {

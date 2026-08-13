@@ -10,6 +10,15 @@ export { DEFAULT_OPTIONS, resolveOptions, parseActionOrder, ACTION_SLOTS } from 
 export { render, renderLine, quotePath } from './render.js';
 export { toItems, sortItems, slotOf } from './actions.js';
 export { runGit, parseRaw, getStagedEntries, toPathspecs, type GitRunner } from './git.js';
+export {
+  CONFIG_ENV,
+  configLocation,
+  configSchema,
+  loadConfig,
+  parseConfig,
+  renderConfig,
+} from './config.js';
+export { parseToml, TomlError, type TomlValue } from './toml.js';
 export { GitcimError } from './errors.js';
 
 export interface GenerateOptions {

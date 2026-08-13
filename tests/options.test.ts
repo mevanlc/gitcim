@@ -8,7 +8,7 @@ import {
   resolveOptions,
   SPECS_BY_FLAG,
 } from '../src/options.js';
-import { buildFormat, HELP, parseArgsOptions, parseCliArgs } from '../src/args.js';
+import { buildFormat, COMMAND_SPECS, HELP, parseArgsOptions, parseCliArgs } from '../src/args.js';
 import type { Options } from '../src/types.js';
 
 describe('OPTION_SPECS', () => {
@@ -105,6 +105,14 @@ describe('derived parseArgs table', () => {
     }
   });
 
+  it('declares every command, with only the value-taking ones taking values', () => {
+    const options = parseArgsOptions();
+    for (const spec of COMMAND_SPECS) {
+      expect(options[spec.flag]?.type).toBe(spec.placeholder ? 'string' : 'boolean');
+      expect(options[spec.flag]?.short).toBe(spec.short);
+    }
+  });
+
   it('keeps the short flags', () => {
     const options = parseArgsOptions();
     expect(options.help?.short).toBe('h');
@@ -126,6 +134,11 @@ describe('derived help', () => {
       expect(HELP).toContain(`(default: ${formatDefault(spec)})`);
       if ('negatable' in spec && spec.negatable) expect(HELP).toContain(`--${spec.negatable}`);
     }
+  });
+
+  it('documents every command and the config environment variable', () => {
+    for (const spec of COMMAND_SPECS) expect(HELP).toContain(`--${spec.flag}`);
+    expect(HELP).toContain('GITCIM_CONFIG_FILE');
   });
 
   it('groups flags under their section', () => {
@@ -151,6 +164,9 @@ describe('README', () => {
       if ('negatable' in spec && spec.negatable) {
         expect(readme, `README.md is missing --${spec.negatable}`).toContain(`--${spec.negatable}`);
       }
+    }
+    for (const spec of COMMAND_SPECS) {
+      expect(readme, `README.md is missing --${spec.flag}`).toContain(`--${spec.flag}`);
     }
   });
 });

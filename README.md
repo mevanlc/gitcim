@@ -44,6 +44,9 @@ gitcim --include src docs --exclude 'src/vendor/*'
 Naming a path that has changes but has not been staged is an error, not a silent
 omission — the message would otherwise describe less than you asked for.
 
+`gitcim --help` lists every flag with its default; `gitcim --version` prints the
+version.
+
 ## Actions
 
 | staged change          | message             |
@@ -102,13 +105,53 @@ broken, so an unusually long path simply overruns the limit.
 `devdocs/PLAN.md` carries the full set of worked examples; each one is a test case in
 `tests/spec-examples.test.ts`.
 
+## Configuration
+
+Every option above can be set in a TOML file, using the flag's own name as the key.
+Flags override the file, which overrides the defaults.
+
+```bash
+gitcim --config-init         # write a config file of defaults, fully commented
+gitcim --config-init-unset   # the same file, with every setting commented out
+```
+
+```toml
+## Collapse runs of N or more same-action items into "update: a, b".
+## A non-negative integer; 0 means off.
+## Flag: --group=N, --no-group
+group = 0
+```
+
+The prose uses `##` and a disabled setting uses a bare `#`, so turning one on in an
+`--config-init-unset` file means deleting a single character.
+
+The file lives at `${XDG_CONFIG_HOME:-~/.config}/gitcim/config.toml`. Set
+`GITCIM_CONFIG_FILE` to use another path, or `-` to read the config from stdin and
+to write generated files to stdout:
+
+```bash
+GITCIM_CONFIG_FILE=./release.toml gitcim
+GITCIM_CONFIG_FILE=- gitcim --config-init > gitcim.toml
+```
+
+A file named by `GITCIM_CONFIG_FILE` must exist; the default path is optional.
+`--config-init` will not overwrite an existing config — delete it, or write elsewhere.
+Unknown settings, wrong types and syntax errors are reported with their line and
+stop the run rather than being skipped.
+
+`gitcim --config-write-schema PATH` (or `-`) writes a JSON Schema for the file,
+generated from the same option table, for editors that check TOML against one.
+
+Only a small TOML subset is read: one flat table of strings, non-negative integers,
+booleans and arrays of strings. Sections, floats and dates are errors.
+
 ## Exit codes
 
-| code | meaning                                              |
-| ---- | ---------------------------------------------------- |
-| 0    | Message written to stdout                            |
-| 1    | Nothing staged, or git failed                        |
-| 2    | Bad usage, or an `--include` path that is not staged |
+| code | meaning                                                         |
+| ---- | --------------------------------------------------------------- |
+| 0    | Message written to stdout                                       |
+| 1    | Nothing staged, or git failed                                   |
+| 2    | Bad usage, a bad config file, or an `--include` path not staged |
 
 ## Library
 
@@ -119,7 +162,9 @@ const message = await generate({ include: ['src'], format: { group: 2, overflow:
 ```
 
 `generate` accepts an injectable git runner, so it can be driven without spawning git.
-`render`, `toItems` and `parseRaw` are exported for finer-grained use.
+It does not read the config file — that is the CLI's job — but `loadConfig`,
+`parseConfig`, `renderConfig` and `configSchema` are exported alongside `render`,
+`toItems` and `parseRaw` for finer-grained use.
 
 ## Development
 

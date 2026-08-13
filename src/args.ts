@@ -1,12 +1,14 @@
 import { parseArgs, type ParseArgsConfig } from 'node:util';
+import { CONFIG_ENV } from './config.js';
 import { GitcimError } from './errors.js';
 import {
+  flagSyntax,
   formatDefault,
   negatedValue,
   OPTION_SPECS,
   parseActionOrder,
+  SECTIONS,
   type OptionSpec,
-  type Section,
 } from './options.js';
 import type { Options } from './types.js';
 
@@ -24,30 +26,68 @@ interface FileLists {
   rest: string[];
 }
 
-/** How a flag is written in help: `--list-indent=N`, or `--and, --no-and`. */
-function flagSyntax(spec: OptionSpec): string {
-  const value = spec.kind === 'boolean' ? '' : `=${spec.placeholder}`;
-  const negated = 'negatable' in spec && spec.negatable ? `, --${spec.negatable}` : '';
-  return `--${spec.flag}${value}${negated}`;
+/**
+ * A flag that makes gitcim do something other than describe the index. These
+ * are not `Options` fields, so they live here rather than in the option specs.
+ */
+export interface CommandSpec {
+  flag: string;
+  short?: string;
+  /** Placeholder for a command that takes a value. */
+  placeholder?: string;
+  help: string;
 }
 
-const SECTIONS: Section[] = ['Wording', 'Layout'];
+export const COMMAND_SPECS: readonly CommandSpec[] = [
+  { flag: 'config-init', help: 'Write a config file of defaults, then exit' },
+  { flag: 'config-init-unset', help: 'The same file with every setting commented out' },
+  {
+    flag: 'config-write-schema',
+    placeholder: 'PATH',
+    help: "Write the config file's JSON schema, then exit",
+  },
+  { flag: 'version', short: 'v', help: 'Print version' },
+  { flag: 'help', short: 'h', help: 'Show this help' },
+];
 
-/** Build `--help` from the option table, so it cannot drift from the flags. */
+function commandSyntax(spec: CommandSpec): string {
+  const short = spec.short ? `-${spec.short}, ` : '';
+  const value = spec.placeholder ? ` ${spec.placeholder}` : '';
+  return `${short}--${spec.flag}${value}`;
+}
+
+interface HelpRow {
+  section: string;
+  syntax: string;
+  help: string;
+}
+
+/** Build `--help` from the tables, so it cannot drift from the flags. */
 function buildHelp(): string {
-  const rows = OPTION_SPECS.map((spec) => ({
-    spec,
-    syntax: flagSyntax(spec),
-  }));
-  const width = Math.max(...rows.map((row) => row.syntax.length)) + 2;
+  const rows: HelpRow[] = [
+    {
+      section: 'Selection',
+      syntax: '--include [FILES...]',
+      help: 'Only describe these paths (git pathspecs)',
+    },
+    { section: 'Selection', syntax: '--exclude [FILES...]', help: 'Leave these paths out' },
+    ...OPTION_SPECS.map((spec) => ({
+      section: spec.section as string,
+      syntax: flagSyntax(spec),
+      help: `${spec.help} (default: ${formatDefault(spec)})`,
+    })),
+    ...COMMAND_SPECS.map((spec) => ({
+      section: 'Commands',
+      syntax: commandSyntax(spec),
+      help: spec.help,
+    })),
+  ];
 
-  const sections = SECTIONS.map((section) => {
+  const width = Math.max(...rows.map((row) => row.syntax.length)) + 2;
+  const sections = ['Selection', ...SECTIONS, 'Commands'].map((section) => {
     const lines = rows
-      .filter((row) => row.spec.section === section)
-      .map((row) => {
-        const help = `${row.spec.help} (default: ${formatDefault(row.spec)})`;
-        return `    ${row.syntax.padEnd(width)}${help}`;
-      });
+      .filter((row) => row.section === section)
+      .map((row) => `    ${row.syntax.padEnd(width)}${row.help}`);
     return `${section}:\n${lines.join('\n')}\n`;
   });
 
@@ -56,13 +96,11 @@ function buildHelp(): string {
 Usage:
     gitcim [OPTIONS] [--include [FILES...]] [--exclude [FILES...]]
 
-Selection:
-    --include [FILES...]${' '.repeat(Math.max(1, width - 20))}Only describe these paths (git pathspecs)
-    --exclude [FILES...]${' '.repeat(Math.max(1, width - 20))}Leave these paths out
-
 ${sections.join('\n')}
-    -v, --version${' '.repeat(Math.max(1, width - 13))}Print version
-    -h, --help${' '.repeat(Math.max(1, width - 10))}Show this help
+Environment:
+    ${CONFIG_ENV.padEnd(width)}Config file to read, or to write with --config-init.
+    ${''.padEnd(width)}"-" means stdin when reading, stdout when writing.
+    ${''.padEnd(width)}Defaults to ~/.config/gitcim/config.toml.
 `;
 }
 
@@ -158,12 +196,16 @@ export function buildFormat(values: Values): Partial<Options> {
   return format as Partial<Options>;
 }
 
-/** The `parseArgs` option table, derived from the option specs. */
+/** The `parseArgs` option table, derived from the option and command specs. */
 export function parseArgsOptions(): NonNullable<ParseArgsConfig['options']> {
-  const options: NonNullable<ParseArgsConfig['options']> = {
-    version: { type: 'boolean', short: 'v' },
-    help: { type: 'boolean', short: 'h' },
-  };
+  const options: NonNullable<ParseArgsConfig['options']> = {};
+
+  for (const spec of COMMAND_SPECS) {
+    options[spec.flag] = {
+      type: spec.placeholder ? 'string' : 'boolean',
+      ...(spec.short ? { short: spec.short } : {}),
+    };
+  }
 
   for (const spec of OPTION_SPECS) {
     options[spec.flag] = { type: spec.kind === 'boolean' ? 'boolean' : 'string' };
