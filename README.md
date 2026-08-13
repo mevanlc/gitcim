@@ -5,7 +5,7 @@ guessing at intent — `gitcim` reads `git diff --cached` and reports the mechan
 
 ```console
 $ git add -A && gitcim
-add src/parser.ts, update src/main.ts, rename old.md to new.md, remove legacy.ts, chmod +x run.sh
+add src/parser.ts, update src/main.ts, remove legacy.ts, rename old.md to new.md, chmod +x run.sh
 ```
 
 For messages that infer _why_ a change was made, see
@@ -49,34 +49,43 @@ version.
 
 ## Actions
 
-| staged change          | message             |
-| ---------------------- | ------------------- |
-| new file               | `add path`          |
-| modified               | `update path`       |
-| deleted                | `remove path`       |
-| renamed                | `rename old to new` |
-| executable bit set     | `chmod +x path`     |
-| executable bit cleared | `chmod -x path`     |
+| staged change          | message                 |
+| ---------------------- | ----------------------- |
+| new file               | `add <path>`            |
+| modified               | `update <path>`         |
+| deleted                | `remove <path>`         |
+| renamed                | `rename <old> to <new>` |
+| copied                 | `copy <old> to <new>`   |
+| executable bit set     | `chmod +x <path>`       |
+| executable bit cleared | `chmod -x <path>`       |
 
 A change can produce two actions: editing a file _and_ flipping its executable bit
 reports both `update` and `chmod +x`. A chmod that changes nothing produces nothing,
-because git does not stage it.
+because git does not stage it. A rename or copy that also changed the file reports
+the `rename`/`copy` first and the `update` after it, whatever `--action-order` says,
+since the new path does not exist until then.
+
+Renames and copies come from git's own detection, asked for explicitly so the message
+does not depend on the repository's `diff.renames`. Copies are looked for the thorough
+way (`--find-copies-harder`), because the ordinary `cp a b && git add b` is invisible
+to anything less.
 
 ## Options
 
 ### Wording
 
-| flag                      | default                          | effect                                                            |
-| ------------------------- | -------------------------------- | ----------------------------------------------------------------- |
-| `--group=N`, `--no-group` | off                              | Collapse a run of N or more same-action items into `update: a, b` |
-| `--and`, `--no-and`       | off                              | Join the last item with `and`                                     |
-| `--item-separator=S`      | `", "`                           | Between items                                                     |
-| `--group-separator=S`     | `"; "`                           | Between groups                                                    |
-| `--item-action-suffix=S`  | `" "`                            | After an item's action                                            |
-| `--group-action-suffix=S` | `": "`                           | After a group's action                                            |
-| `--rename-separator=S`    | `" to "`                         | Between a rename's paths                                          |
-| `--quote-char=C`          | `"`                              | Quotes paths containing whitespace                                |
-| `--action-order=A,B,...`  | `add,update,rename,remove,chmod` | Order actions appear in                                           |
+| flag                              | default                               | effect                                                            |
+| --------------------------------- | ------------------------------------- | ----------------------------------------------------------------- |
+| `--group=N`, `--no-group`         | off                                   | Collapse a run of N or more same-action items into `update: a, b` |
+| `--and`, `--no-and`               | off                                   | Join the last item with `and`                                     |
+| `--oxford-and`, `--no-oxford-and` | on                                    | Use serial comma before `"and"`                                   |
+| `--item-separator=S`              | `", "`                                | Between items                                                     |
+| `--group-separator=S`             | `"; "`                                | Between groups                                                    |
+| `--item-action-suffix=S`          | `" "`                                 | After an item's action                                            |
+| `--group-action-suffix=S`         | `": "`                                | After a group's action                                            |
+| `--rename-separator=S`            | `" to "`                              | Between a rename's or copy's paths                                |
+| `--quote-char=C`                  | `"`                                   | Quotes paths containing whitespace                                |
+| `--action-order=A,B,...`          | `add,update,remove,rename,copy,chmod` | Order actions appear in                                           |
 
 ### Layout
 
@@ -192,4 +201,4 @@ npm run build
 
 ## License
 
-MIT
+Apache-2.0

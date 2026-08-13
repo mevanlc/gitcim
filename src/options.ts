@@ -3,8 +3,9 @@ import type { ActionSlot, Options } from './types.js';
 export const ACTION_SLOTS = [
   'add',
   'update',
-  'rename',
   'remove',
+  'rename',
+  'copy',
   'chmod',
 ] as const satisfies readonly ActionSlot[];
 
@@ -87,6 +88,16 @@ export const OPTION_SPECS = [
     help: 'Join the last item with "and"',
   },
   {
+    kind: 'boolean',
+    key: 'oxfordAnd',
+    flag: 'oxford-and',
+    negatable: 'no-oxford-and',
+    default: true,
+    defaultLabel: 'on',
+    section: 'Wording',
+    help: 'Use serial comma before "and"',
+  },
+  {
     kind: 'string',
     key: 'itemSeparator',
     flag: 'item-separator',
@@ -129,7 +140,7 @@ export const OPTION_SPECS = [
     placeholder: 'S',
     default: ' to ',
     section: 'Wording',
-    help: "Between a rename's paths",
+    help: "Between a rename's or copy's paths",
   },
   {
     kind: 'string',
@@ -148,7 +159,7 @@ export const OPTION_SPECS = [
     placeholder: 'A,B,...',
     default: ACTION_SLOTS,
     section: 'Wording',
-    help: 'Order of add, update, rename, remove, chmod',
+    help: `Order of ${ACTION_SLOTS.join(', ')}`,
   },
   {
     kind: 'count',
@@ -242,7 +253,7 @@ export function resolveOptions(overrides: Partial<Options> = {}): Options {
   return { ...DEFAULT_OPTIONS, ...overrides };
 }
 
-/** Parse an `--action-order` value such as `add,update,rename,remove,chmod`. */
+/** Parse an `--action-order` value such as `add,update,remove,rename,copy,chmod`. */
 export function parseActionOrder(value: string): ActionSlot[] {
   const slots = value
     .split(',')

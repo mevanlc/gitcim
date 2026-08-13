@@ -23,10 +23,30 @@ describe('toItems', () => {
     expect(kinds(toItems([entry({ status: 'A', path: 'a.ts' })]))).toEqual(['add a.ts']);
   });
 
-  it('maps a copy as an addition', () => {
-    expect(kinds(toItems([entry({ status: 'C', path: 'b.ts', oldPath: 'a.ts' })]))).toEqual([
-      'add b.ts',
+  it('maps a copy keeping both paths', () => {
+    const [item] = toItems([
+      entry({ status: 'C', path: 'new.md', oldPath: 'old.md', newSha: 'aaaaaaa' }),
     ]);
+    expect(item).toEqual({ kind: 'copy', path: 'new.md', oldPath: 'old.md' });
+  });
+
+  it('reports a copy that also changed content as both, copy first', () => {
+    const items = toItems([entry({ status: 'C', path: 'new.md', oldPath: 'old.md' })]);
+    expect(kinds(items)).toEqual(['copy new.md', 'update new.md']);
+  });
+
+  it('does not call a copy into a different mode a chmod', () => {
+    // The old mode is the source file's, and the source is not what changed.
+    const items = toItems([
+      entry({
+        status: 'C',
+        path: 'run.sh',
+        oldPath: 'a.sh',
+        newMode: '100755',
+        newSha: 'aaaaaaa',
+      }),
+    ]);
+    expect(kinds(items)).toEqual(['copy run.sh']);
   });
 
   it('maps a deletion', () => {
@@ -48,9 +68,16 @@ describe('toItems', () => {
     expect(item).toEqual({ kind: 'rename', path: 'new.md', oldPath: 'old.md' });
   });
 
-  it('reports a rename that also changed content as both', () => {
+  it('reports a rename that also changed content as both, rename first', () => {
     const items = toItems([entry({ status: 'R', path: 'new.md', oldPath: 'old.md' })]);
-    expect(kinds(items)).toEqual(['update new.md', 'rename new.md']);
+    expect(kinds(items)).toEqual(['rename new.md', 'update new.md']);
+  });
+
+  it('still reports a chmod carried through a rename', () => {
+    const items = toItems([
+      entry({ status: 'R', path: 'new.sh', oldPath: 'old.sh', newMode: '100755' }),
+    ]);
+    expect(kinds(items)).toEqual(['rename new.sh', 'update new.sh', 'chmod+x new.sh']);
   });
 
   it('reports a mode-only change as chmod alone', () => {
@@ -120,6 +147,17 @@ describe('sortItems', () => {
     ]);
   });
 
+  it('keeps each renamed path with its own follow-up actions', () => {
+    // Two renames, one of which also changed content: the update belongs to x,
+    // and must not be ranked as an ordinary update ahead of either rename.
+    const items = toItems([
+      entry({ status: 'R', path: 'x.md', oldPath: 'old_x.md' }),
+      entry({ status: 'R', path: 'w.md', oldPath: 'old_w.md', newSha: 'aaaaaaa' }),
+      entry({ status: 'M', path: 'm.md' }),
+    ]);
+    expect(kinds(items)).toEqual(['update m.md', 'rename w.md', 'rename x.md', 'update x.md']);
+  });
+
   it('does not mutate its input', () => {
     const items: Item[] = [
       { kind: 'remove', path: 'z.ts' },
@@ -137,7 +175,7 @@ describe('slotOf', () => {
   });
 
   it('passes other kinds through', () => {
-    for (const kind of ['add', 'update', 'rename', 'remove'] as ActionKind[]) {
+    for (const kind of ['add', 'update', 'remove', 'rename', 'copy'] as ActionKind[]) {
       expect(slotOf(kind)).toBe(kind);
     }
   });
@@ -145,7 +183,14 @@ describe('slotOf', () => {
 
 describe('parseActionOrder', () => {
   it('appends unnamed slots in their default order', () => {
-    expect(parseActionOrder('remove,add')).toEqual(['remove', 'add', 'update', 'rename', 'chmod']);
+    expect(parseActionOrder('remove,add')).toEqual([
+      'remove',
+      'add',
+      'update',
+      'rename',
+      'copy',
+      'chmod',
+    ]);
   });
 
   it('tolerates spaces', () => {

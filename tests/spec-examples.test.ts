@@ -8,7 +8,7 @@ import type { ActionKind, Item, Options } from '../src/types.js';
  * The examples from devdocs/PLAN.md, one case each.
  *
  * The item sets and flags are transcribed literally; the expected outputs are
- * ordered by the default `--action-order` (add, update, rename, remove, chmod),
+ * ordered by the default `--action-order` (add, update, remove, rename, copy, chmod),
  * which differs from the ordering PLAN.md's prose happened to show.
  */
 
@@ -70,6 +70,17 @@ const CASES: Case[] = [
     expected: 'rename README.md -> README_NEW.md',
   },
   {
+    name: 'copy',
+    items: [item('copy', 'README_COPY.md', 'README.md')],
+    expected: 'copy README.md to README_COPY.md',
+  },
+  {
+    name: 'copy that was then edited',
+    // Listed update-first on purpose: the sort is what puts the copy ahead of it.
+    items: [update('README_COPY.md'), item('copy', 'README_COPY.md', 'README.md')],
+    expected: 'copy README.md to README_COPY.md, update README_COPY.md',
+  },
+  {
     name: 'chmod +x alongside a removal',
     items: [item('chmod+x', 'scripts/install.sh'), remove('plans/COMPLETED.md')],
     expected: 'remove plans/COMPLETED.md, chmod +x scripts/install.sh',
@@ -105,6 +116,12 @@ const CASES: Case[] = [
     items: [update('docs/DOCS.md'), remove('plans/PLAN.md'), add('test/test.py')],
     opts: { and: true },
     expected: 'add test/test.py, update docs/DOCS.md, and remove plans/PLAN.md',
+  },
+  {
+    name: 'three items, --and with --no-oxford-and omits serial comma',
+    items: [update('docs/DOCS.md'), remove('plans/PLAN.md'), add('test/test.py')],
+    opts: { and: true, oxfordAnd: false },
+    expected: 'add test/test.py, update docs/DOCS.md and remove plans/PLAN.md',
   },
   {
     name: '--no-group',

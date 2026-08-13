@@ -5,6 +5,7 @@ const LABELS: Record<ActionKind, string> = {
   add: 'add',
   update: 'update',
   rename: 'rename',
+  copy: 'copy',
   remove: 'remove',
   'chmod+x': 'chmod +x',
   'chmod-x': 'chmod -x',
@@ -32,7 +33,7 @@ export function quotePath(path: string, quoteChar: string): string {
 
 function operand(item: Item, opts: Options): string {
   const path = quotePath(item.path, opts.quoteChar);
-  if (item.kind !== 'rename' || item.oldPath === undefined) return path;
+  if ((item.kind !== 'rename' && item.kind !== 'copy') || item.oldPath === undefined) return path;
   return `${quotePath(item.oldPath, opts.quoteChar)}${opts.renameSeparator}${path}`;
 }
 
@@ -90,8 +91,14 @@ export function renderLine(items: Item[], opts: Options, isLast = false): string
       if (i === 0) return seg.text;
       const last = i === segments.length - 1;
       if (isLast && opts.and && last) {
-        // Two segments read as "a and b"; three or more keep the serial comma.
-        return segments.length === 2 ? ` ${AND}${seg.text}` : `${seg.sep}${AND}${seg.text}`;
+        // Two segments read as "a and b"; three or more keep the serial comma if oxfordAnd is true.
+        const useSerialComma = segments.length > 2 && opts.oxfordAnd;
+        // Keeping the separator means "and" needs whitespace in front of it;
+        // dropping it means keeping only whatever whitespace it ended with, so
+        // a separator like ",\n" still breaks the line where it used to.
+        const spaced = /\s$/.test(seg.sep) ? seg.sep : `${seg.sep} `;
+        const gap = /\s+$/.exec(seg.sep)?.[0] ?? ' ';
+        return `${useSerialComma ? spaced : gap}${AND}${seg.text}`;
       }
       return `${seg.sep}${seg.text}`;
     })

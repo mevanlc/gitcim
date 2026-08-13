@@ -1,14 +1,14 @@
 /** A single mechanical action performed on one path. */
-export type ActionKind = 'add' | 'update' | 'rename' | 'remove' | 'chmod+x' | 'chmod-x';
+export type ActionKind = 'add' | 'update' | 'remove' | 'rename' | 'copy' | 'chmod+x' | 'chmod-x';
 
 /** The `--action-order` slots. Both chmod kinds share the `chmod` slot. */
-export type ActionSlot = 'add' | 'update' | 'rename' | 'remove' | 'chmod';
+export type ActionSlot = 'add' | 'update' | 'remove' | 'rename' | 'copy' | 'chmod';
 
 export interface Item {
   kind: ActionKind;
   /** Path after the change. */
   path: string;
-  /** Path before the change. Renames only. */
+  /** Path before the change. Renames and copies only. */
   oldPath?: string;
 }
 
@@ -31,6 +31,8 @@ export interface Options {
   group: number;
   /** Join the final chunk with `and`. */
   and: boolean;
+  /** Use serial comma before `and` in lists of 3 or more. */
+  oxfordAnd: boolean;
   itemSeparator: string;
   groupSeparator: string;
   /** Between an action label and its operand, for an expanded item. */

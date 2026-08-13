@@ -75,9 +75,50 @@ describe('renderLine', () => {
     );
   });
 
+  it('includes or omits Oxford comma based on oxfordAnd option', () => {
+    const items = [add('a'), update('b'), remove('c')];
+    expect(renderLine(items, opts({ and: true, oxfordAnd: true }), true)).toBe(
+      'add a, update b, and remove c',
+    );
+    expect(renderLine(items, opts({ and: true, oxfordAnd: false }), true)).toBe(
+      'add a, update b and remove c',
+    );
+    expect(renderLine(items, opts({ itemSeparator: ' ', and: true, oxfordAnd: true }), true)).toBe(
+      'add a update b and remove c',
+    );
+    expect(renderLine(items, opts({ itemSeparator: '', and: true, oxfordAnd: true }), true)).toBe(
+      'add aupdate b and remove c',
+    );
+    expect(
+      renderLine(items, opts({ itemSeparator: '﹐', and: true, oxfordAnd: false }), true),
+    ).toBe('add a﹐update b and remove c');
+    expect(renderLine(items, opts({ itemSeparator: '﹐', and: true, oxfordAnd: true }), true)).toBe(
+      'add a﹐update b﹐ and remove c',
+    );
+  });
+
+  it('keeps a separator’s own whitespace in front of "and"', () => {
+    const items = [add('a'), update('b'), remove('c')];
+    // A newline separator has to stay a newline, not become ", \n" or " ".
+    expect(renderLine(items, opts({ itemSeparator: ',\n', and: true }), true)).toBe(
+      'add a,\nupdate b,\nand remove c',
+    );
+    expect(
+      renderLine(items, opts({ itemSeparator: ',\n', and: true, oxfordAnd: false }), true),
+    ).toBe('add a,\nupdate b\nand remove c');
+    expect(renderLine(items, opts({ itemSeparator: ',\t', and: true }), true)).toBe(
+      'add a,\tupdate b,\tand remove c',
+    );
+  });
+
   it('renders a rename with both paths', () => {
     const item: Item = { kind: 'rename', path: 'new.md', oldPath: 'old.md' };
     expect(renderLine([item], opts())).toBe('rename old.md to new.md');
+  });
+
+  it('renders a copy with both paths', () => {
+    const item: Item = { kind: 'copy', path: 'new.md', oldPath: 'old.md' };
+    expect(renderLine([item], opts())).toBe('copy old.md to new.md');
   });
 
   it('falls back to the single path when a rename has no source', () => {

@@ -88,13 +88,15 @@ describe('toPathspecs', () => {
 });
 
 describe('getStagedEntries', () => {
-  it('asks git for a rename-aware raw diff and omits `--` when unscoped', async () => {
+  it('asks git for a copy-aware raw diff and omits `--` when unscoped', async () => {
     const calls: string[][] = [];
     await getStagedEntries([], undefined, async (args) => {
       calls.push(args);
       return '';
     });
-    expect(calls[0]).toEqual(['diff', '--cached', '--raw', '-z', '--find-renames']);
+    // Harder detection, not --find-copies: plain -C only considers files the
+    // same diff modified, so `cp a b && git add b` comes back as a plain add.
+    expect(calls[0]).toEqual(['diff', '--cached', '--raw', '-z', '--find-copies-harder']);
   });
 
   it('passes pathspecs after `--`', async () => {

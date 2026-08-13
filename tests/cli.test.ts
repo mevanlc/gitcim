@@ -1,6 +1,8 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
+  appendFileSync,
   chmodSync,
+  copyFileSync,
   existsSync,
   mkdirSync,
   mkdtempSync,
@@ -81,7 +83,7 @@ describe('run', () => {
     expect(await run([], { io, cwd: repo, env })).toBe(0);
     expect(io.out).toBe(
       'add src/new.py, update "a file.md", update src/main.py, ' +
-        'rename README.md to READYOU.md, remove src/old.py, chmod +x run.sh\n',
+        'remove src/old.py, rename README.md to READYOU.md, chmod +x run.sh\n',
     );
   });
 
@@ -161,6 +163,78 @@ describe('run', () => {
     expect(await run([], { io, cwd: bare, env })).toBe(1);
     expect(io.err).toBe('gitcim: not a git repository\n');
     rmSync(bare, { recursive: true, force: true });
+  });
+});
+
+/**
+ * Copies get their own repositories, driven through the real git binary. Every
+ * case here is one git will only report as a copy under `--find-copies-harder`,
+ * so this is what keeps the flag — and the whole `copy` action — honest.
+ */
+describe('copy detection', () => {
+  const dirs: string[] = [];
+
+  /** A repository with one committed file, ready for a copy of it to be staged. */
+  async function base(): Promise<string> {
+    const dir = mkdtempSync(join(tmpdir(), 'gitcim-copy-'));
+    dirs.push(dir);
+    const at = (...args: string[]) => runGit(args, dir);
+    await at('init', '-q');
+    await at('config', 'user.email', 'test@example.com');
+    await at('config', 'user.name', 'Test');
+    await at('config', 'commit.gpgsign', 'false');
+    writeFileSync(join(dir, 'a.txt'), Array.from({ length: 8 }, (_, i) => `line ${i}\n`).join(''));
+    await at('add', '-A');
+    await at('commit', '-qm', 'base');
+    return dir;
+  }
+
+  afterAll(() => {
+    for (const dir of dirs) rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('reports `cp a b && git add b` as a copy', async () => {
+    const dir = await base();
+    copyFileSync(join(dir, 'a.txt'), join(dir, 'b.txt'));
+    await runGit(['add', '-A'], dir);
+
+    const io = capture();
+    expect(await run([], { io, cwd: dir, env })).toBe(0);
+    expect(io.out).toBe('copy a.txt to b.txt\n');
+  });
+
+  it('reports a copy that was then edited as the copy, then the update', async () => {
+    const dir = await base();
+    copyFileSync(join(dir, 'a.txt'), join(dir, 'b.txt'));
+    appendFileSync(join(dir, 'b.txt'), 'a line only the copy has\n');
+    await runGit(['add', '-A'], dir);
+
+    const io = capture();
+    expect(await run([], { io, cwd: dir, env })).toBe(0);
+    expect(io.out).toBe('copy a.txt to b.txt, update b.txt\n');
+  });
+
+  it('does not call a copy made executable a chmod', async () => {
+    const dir = await base();
+    copyFileSync(join(dir, 'a.txt'), join(dir, 'b.txt'));
+    chmodSync(join(dir, 'b.txt'), 0o755);
+    await runGit(['add', '-A'], dir);
+
+    // git reports :100644 100755 … C100, but a.txt is untouched and b.txt was
+    // never anything else — nothing was chmodded.
+    const io = capture();
+    expect(await run([], { io, cwd: dir, env })).toBe(0);
+    expect(io.out).toBe('copy a.txt to b.txt\n');
+  });
+
+  it('applies --rename-separator to a copy', async () => {
+    const dir = await base();
+    copyFileSync(join(dir, 'a.txt'), join(dir, 'b.txt'));
+    await runGit(['add', '-A'], dir);
+
+    const io = capture();
+    expect(await run(['--rename-separator= -> '], { io, cwd: dir, env })).toBe(0);
+    expect(io.out).toBe('copy a.txt -> b.txt\n');
   });
 });
 
@@ -527,7 +601,10 @@ describe('--config-print', () => {
     const io = capture();
     await run(['--config-print', '--group=2', '--action-order=chmod'], { io, cwd: repo, env });
     expect(resolveOptions(parseConfig(io.out, 'printed'))).toEqual(
-      resolveOptions({ group: 2, actionOrder: ['chmod', 'add', 'update', 'rename', 'remove'] }),
+      resolveOptions({
+        group: 2,
+        actionOrder: ['chmod', 'add', 'update', 'remove', 'rename', 'copy'],
+      }),
     );
   });
 

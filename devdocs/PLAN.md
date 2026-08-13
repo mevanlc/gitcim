@@ -5,7 +5,7 @@ command line tool kind of like ~/p/my/gitmsg except the messages are more mechan
 Every example below is transcribed as a test case in `tests/spec-examples.test.ts`, so
 this file and the implementation cannot drift apart silently.
 
-Items are ordered by `--action-order`, which defaults to `add,update,rename,remove,chmod`.
+Items are ordered by `--action-order`, which defaults to `add,update,remove,rename,copy,chmod`.
 Within one action, paths sort in byte order.
 
 ## usage
@@ -30,6 +30,17 @@ rename README.md to README_NEW.md
 # renamed README.md to README_NEW.md (git status = renamed)
 # --rename-separator=' -> '
 rename README.md -> README_NEW.md
+```
+
+```bash
+# copied README.md to README_COPY.md (git status = copied)
+copy README.md to README_COPY.md
+
+# # ---------------------------------------------------------------
+
+# copied README.md to README_COPY.md, then edited README_COPY.md
+# # the copy comes first: README_COPY.md does not exist until it happens
+copy README.md to README_COPY.md, update README_COPY.md
 ```
 
 ```bash
@@ -70,6 +81,11 @@ add test/test.py, update docs/DOCS.md, remove plans/PLAN.md
 
 # --and
 add test/test.py, update docs/DOCS.md, and remove plans/PLAN.md
+
+# # ---------------------------------------------------------------
+
+# --and --no-oxford-and
+add test/test.py, update docs/DOCS.md and remove plans/PLAN.md
 ```
 
 ```bash

@@ -32,15 +32,20 @@ export function toItems(
   for (const entry of entries) {
     switch (entry.status) {
       case 'A':
-      case 'C':
         items.push({ kind: 'add', path: entry.path });
         break;
       case 'D':
         items.push({ kind: 'remove', path: entry.path });
         break;
+      case 'C':
       case 'R': {
-        items.push({ kind: 'rename', path: entry.path, oldPath: entry.oldPath ?? entry.path });
-        const chmod = chmodKind(entry.oldMode, entry.newMode);
+        const kind = entry.status === 'C' ? 'copy' : 'rename';
+        items.push({ kind, path: entry.path, oldPath: entry.oldPath ?? entry.path });
+        // A rename carries one file's mode forward, so a difference there is a
+        // real chmod. A copy's old mode belongs to the source file, which is
+        // still sitting there unchanged — the destination was simply created
+        // with the mode it has, exactly as an untracked `add` would be.
+        const chmod = kind === 'rename' ? chmodKind(entry.oldMode, entry.newMode) : undefined;
         if (chmod) items.push({ kind: chmod, path: entry.path });
         if (entry.oldSha !== entry.newSha) items.push({ kind: 'update', path: entry.path });
         break;
@@ -59,7 +64,19 @@ export function toItems(
   return sortItems(items, order);
 }
 
-/** Order by action slot, then by path. Both sorts are total, so output is stable. */
+/** A rename or copy is what brings its destination path into existence. */
+function creates(item: Item): boolean {
+  return item.kind === 'rename' || item.kind === 'copy';
+}
+
+/**
+ * Order by action slot, then by path. Both sorts are total, so output is stable.
+ *
+ * A renamed or copied path is the one exception to the slot order: the path
+ * does not exist until that action, so everything else said about it is ranked
+ * alongside it instead of by its own slot. Without that, `--action-order` puts
+ * `update` first and the message reads `update new.md, rename old.md to new.md`.
+ */
 export function sortItems(items: Item[], order: readonly ActionSlot[]): Item[] {
   const rank = new Map<ActionKind, number>();
   order.forEach((slot, i) => {
@@ -72,9 +89,28 @@ export function sortItems(items: Item[], order: readonly ActionSlot[]): Item[] {
     }
   });
 
+  const creation = new Map<string, number>();
+  for (const item of items) {
+    if (creates(item)) creation.set(item.path, rank.get(item.kind) ?? 0);
+  }
+
+  /**
+   * Slot, then path, then position within a renamed path's own run — 0 for the
+   * rename or copy itself, so it leads, and the item's own slot (shifted clear
+   * of 0) for everything that follows it.
+   */
+  const keyOf = (item: Item): [number, string, number] => {
+    const own = rank.get(item.kind) ?? 0;
+    const created = creation.get(item.path);
+    if (created === undefined) return [own, item.path, 0];
+    return [created, item.path, creates(item) ? 0 : own + 1];
+  };
+
   return [...items].sort((a, b) => {
-    const byKind = (rank.get(a.kind) ?? 0) - (rank.get(b.kind) ?? 0);
-    if (byKind !== 0) return byKind;
-    return a.path < b.path ? -1 : a.path > b.path ? 1 : 0;
+    const [aSlot, aPath, aSub] = keyOf(a);
+    const [bSlot, bPath, bSub] = keyOf(b);
+    if (aSlot !== bSlot) return aSlot - bSlot;
+    if (aPath !== bPath) return aPath < bPath ? -1 : 1;
+    return aSub - bSub;
   });
 }

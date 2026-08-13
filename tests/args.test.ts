@@ -135,12 +135,21 @@ describe('buildFormat', () => {
     expect(buildFormat({ and: true }).and).toBe(true);
   });
 
+  it('lets --no-oxford-and win over --oxford-and', () => {
+    expect(buildFormat({ 'oxford-and': true, 'no-oxford-and': true }).oxfordAnd).toBe(false);
+  });
+
+  it('accepts an explicit --oxford-and', () => {
+    expect(buildFormat({ 'oxford-and': true }).oxfordAnd).toBe(true);
+  });
+
   it('parses --action-order', () => {
     expect(buildFormat({ 'action-order': 'remove,add' }).actionOrder).toEqual([
       'remove',
       'add',
       'update',
       'rename',
+      'copy',
       'chmod',
     ]);
   });

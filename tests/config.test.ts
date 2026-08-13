@@ -57,7 +57,7 @@ describe('parseConfig', () => {
 
   it('takes the action order as an array and fills in what is missing', () => {
     expect(parseConfig('action-order = ["chmod", "remove"]', 'x')).toEqual({
-      actionOrder: ['chmod', 'remove', 'add', 'update', 'rename'],
+      actionOrder: ['chmod', 'remove', 'add', 'update', 'rename', 'copy'],
     });
   });
 
@@ -171,7 +171,7 @@ describe('renderEffectiveConfig', () => {
   const options = resolveOptions({
     group: 2,
     itemSeparator: ' | ',
-    actionOrder: ['chmod', 'add', 'update', 'rename', 'remove'],
+    actionOrder: ['chmod', 'add', 'update', 'remove', 'rename', 'copy'],
   });
 
   it('round-trips: what it prints parses back to what it was given', () => {
@@ -251,7 +251,7 @@ describe('configSchema', () => {
     expect(properties['action-order']).toMatchObject({
       type: 'array',
       uniqueItems: true,
-      items: { enum: ['add', 'update', 'rename', 'remove', 'chmod'] },
+      items: { enum: ['add', 'update', 'remove', 'rename', 'copy', 'chmod'] },
     });
   });
 

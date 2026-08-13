@@ -41,14 +41,24 @@ export function toPathspecs(include: string[] = [], exclude: string[] = []): str
   return [...include, ...exclude.map((p) => `:(exclude)${p}`)];
 }
 
-/** Read the staged changes as raw entries. */
+/**
+ * Read the staged changes as raw entries.
+ *
+ * `--find-copies-harder` rather than `--find-renames`, because it is the only
+ * setting under which git reports a `C` status for the ordinary way a copy is
+ * made: `cp a b && git add b`. Plain `--find-copies` only looks at files the
+ * same diff already modified, so it misses that case entirely. Detection is
+ * asked for explicitly so the message does not depend on the repository's
+ * `diff.renames`; harder detection is a superset of every value that setting
+ * can take. It implies rename detection, so renames still come back as `R`.
+ */
 export async function getStagedEntries(
   pathspecs: string[] = [],
   cwd?: string,
   run: GitRunner = runGit,
 ): Promise<RawEntry[]> {
   const out = await run(
-    withPathspecs(['diff', '--cached', '--raw', '-z', '--find-renames'], pathspecs),
+    withPathspecs(['diff', '--cached', '--raw', '-z', '--find-copies-harder'], pathspecs),
     cwd,
   );
   return parseRaw(out);

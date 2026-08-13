@@ -18,13 +18,14 @@ describe('OPTION_SPECS', () => {
     expect(DEFAULT_OPTIONS).toEqual({
       group: 0,
       and: false,
+      oxfordAnd: true,
       itemSeparator: ', ',
       groupSeparator: '; ',
       itemActionSuffix: ' ',
       groupActionSuffix: ': ',
       renameSeparator: ' to ',
       quoteChar: '"',
-      actionOrder: ['add', 'update', 'rename', 'remove', 'chmod'],
+      actionOrder: ['add', 'update', 'remove', 'rename', 'copy', 'chmod'],
       overflow: 0,
       listOverflow: 0,
       listIndent: 4,
@@ -67,8 +68,10 @@ describe('OPTION_SPECS', () => {
 describe('negatedValue', () => {
   it('turns a switch off and a count to zero', () => {
     const and = OPTION_SPECS.find((spec) => spec.key === 'and');
+    const oxford = OPTION_SPECS.find((spec) => spec.key === 'oxfordAnd');
     const group = OPTION_SPECS.find((spec) => spec.key === 'group');
     expect(negatedValue(and!)).toBe(false);
+    expect(negatedValue(oxford!)).toBe(false);
     expect(negatedValue(group!)).toBe(0);
   });
 });
@@ -89,7 +92,7 @@ describe('formatDefault', () => {
 
   it('joins the action order', () => {
     expect(formatDefault(SPECS_BY_FLAG.get('action-order')!)).toBe(
-      'add,update,rename,remove,chmod',
+      'add,update,remove,rename,copy,chmod',
     );
   });
 });
