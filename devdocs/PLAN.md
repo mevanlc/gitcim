@@ -283,3 +283,19 @@ gitcim --config-print # print the current configuration
 gitcim --config-init # create a new config file with default values at ~/.config/gitcim/config.toml
 gitcim --config-reset # reset the config file to default values
 ```
+
+`OPTION_SPECS` in `src/options.ts` is the one place every knob is declared. Defaults,
+the `parseArgs` table, `buildFormat` and `--help` are all derived from it, and the
+config file is meant to be too: a spec's `flag` doubles as its config key, so the
+generated file reads
+
+```toml
+item-separator = ", "
+list-indent = 4
+```
+
+That leaves the config work as a reader (TOML → `Partial<Options>`, validated with the
+same `coerce` the flags use) and a writer (`spec.default` → TOML), with precedence
+running defaults < config file < flags. A compile-time guard in `src/options.ts` fails
+the build if an `Options` field is added without a spec, so nothing can be introduced
+that the config file would silently not know about.

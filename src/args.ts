@@ -1,39 +1,14 @@
-import { parseArgs } from 'node:util';
+import { parseArgs, type ParseArgsConfig } from 'node:util';
 import { GitcimError } from './errors.js';
-import { parseActionOrder } from './options.js';
+import {
+  formatDefault,
+  negatedValue,
+  OPTION_SPECS,
+  parseActionOrder,
+  type OptionSpec,
+  type Section,
+} from './options.js';
 import type { Options } from './types.js';
-
-export const HELP = `gitcim — describe the staged changes as a commit message
-
-Usage:
-    gitcim [OPTIONS] [--include [FILES...]] [--exclude [FILES...]]
-
-Selection:
-    --include [FILES...]        Only describe these paths (git pathspecs)
-    --exclude [FILES...]        Leave these paths out
-
-Wording:
-    --group=N, --no-group       Collapse runs of N or more same-action items
-                                into "update: a, b" (default: off)
-    --and, --no-and             Join the last item with "and" (default: off)
-    --item-separator=S          Between items (default: ", ")
-    --group-separator=S         Between groups (default: "; ")
-    --item-action-suffix=S      After an item's action (default: " ")
-    --group-action-suffix=S     After a group's action (default: ": ")
-    --rename-separator=S        Between a rename's paths (default: " to ")
-    --quote-char=C              Quotes paths containing spaces (default: ")
-    --action-order=A,B,...      Order of add, update, rename, remove, chmod
-
-Layout:
-    --overflow=N                Spill past N columns into a list (default: off)
-    --list-overflow=N           Max width of a list line (default: unlimited)
-    --list-indent=N             Spaces before each list bullet (default: 4)
-    --list-max-items=N          Max items per list line (default: unlimited)
-    --list-max-groups=N         Max groups per list line (default: unlimited)
-
-    -v, --version               Print version
-    -h, --help                  Show this help
-`;
 
 export type Values = Record<string, string | boolean | undefined>;
 
@@ -48,6 +23,50 @@ interface FileLists {
   exclude?: string[];
   rest: string[];
 }
+
+/** How a flag is written in help: `--list-indent=N`, or `--and, --no-and`. */
+function flagSyntax(spec: OptionSpec): string {
+  const value = spec.kind === 'boolean' ? '' : `=${spec.placeholder}`;
+  const negated = 'negatable' in spec && spec.negatable ? `, --${spec.negatable}` : '';
+  return `--${spec.flag}${value}${negated}`;
+}
+
+const SECTIONS: Section[] = ['Wording', 'Layout'];
+
+/** Build `--help` from the option table, so it cannot drift from the flags. */
+function buildHelp(): string {
+  const rows = OPTION_SPECS.map((spec) => ({
+    spec,
+    syntax: flagSyntax(spec),
+  }));
+  const width = Math.max(...rows.map((row) => row.syntax.length)) + 2;
+
+  const sections = SECTIONS.map((section) => {
+    const lines = rows
+      .filter((row) => row.spec.section === section)
+      .map((row) => {
+        const help = `${row.spec.help} (default: ${formatDefault(row.spec)})`;
+        return `    ${row.syntax.padEnd(width)}${help}`;
+      });
+    return `${section}:\n${lines.join('\n')}\n`;
+  });
+
+  return `gitcim — describe the staged changes as a commit message
+
+Usage:
+    gitcim [OPTIONS] [--include [FILES...]] [--exclude [FILES...]]
+
+Selection:
+    --include [FILES...]${' '.repeat(Math.max(1, width - 20))}Only describe these paths (git pathspecs)
+    --exclude [FILES...]${' '.repeat(Math.max(1, width - 20))}Leave these paths out
+
+${sections.join('\n')}
+    -v, --version${' '.repeat(Math.max(1, width - 13))}Print version
+    -h, --help${' '.repeat(Math.max(1, width - 10))}Show this help
+`;
+}
+
+export const HELP = buildHelp();
 
 /**
  * Pull the variadic `--include` / `--exclude` lists out of argv.
@@ -96,66 +115,62 @@ export function extractFileLists(argv: string[]): FileLists {
   return { ...lists, rest };
 }
 
-function toCount(name: string, raw: string | undefined): number | undefined {
-  if (raw === undefined) return undefined;
-  const value = Number(raw);
-  if (!Number.isInteger(value) || value < 0) {
-    throw new GitcimError(`${name} must be a non-negative integer`, 2);
+/** Coerce a flag value the way its spec says, reporting a usage error if it cannot. */
+export function coerce(
+  spec: OptionSpec,
+  raw: string | boolean,
+): boolean | number | string | string[] {
+  switch (spec.kind) {
+    case 'boolean':
+      return raw === true;
+    case 'string':
+      return String(raw);
+    case 'order':
+      try {
+        return parseActionOrder(String(raw));
+      } catch (err) {
+        throw new GitcimError(err instanceof Error ? err.message : String(err), 2);
+      }
+    case 'count': {
+      const value = Number(raw);
+      if (!Number.isInteger(value) || value < 0) {
+        throw new GitcimError(`--${spec.flag} must be a non-negative integer`, 2);
+      }
+      return value;
+    }
   }
-  return value;
-}
-
-function str(values: Values, name: string): string | undefined {
-  const value = values[name];
-  return typeof value === 'string' ? value : undefined;
 }
 
 /** Turn parsed flag values into formatting overrides. */
 export function buildFormat(values: Values): Partial<Options> {
-  const format: Partial<Options> = {};
+  const format: Record<string, unknown> = {};
 
-  const group = toCount('--group', str(values, 'group'));
-  if (values['no-group']) format.group = 0;
-  else if (group !== undefined) format.group = group;
-
-  if (values['no-and']) format.and = false;
-  else if (values.and) format.and = true;
-
-  const strings: [keyof Options, string][] = [
-    ['itemSeparator', 'item-separator'],
-    ['groupSeparator', 'group-separator'],
-    ['itemActionSuffix', 'item-action-suffix'],
-    ['groupActionSuffix', 'group-action-suffix'],
-    ['renameSeparator', 'rename-separator'],
-    ['quoteChar', 'quote-char'],
-  ];
-  for (const [key, flag] of strings) {
-    const value = str(values, flag);
-    if (value !== undefined) Object.assign(format, { [key]: value });
-  }
-
-  const counts: [keyof Options, string][] = [
-    ['overflow', 'overflow'],
-    ['listOverflow', 'list-overflow'],
-    ['listIndent', 'list-indent'],
-    ['listMaxItems', 'list-max-items'],
-    ['listMaxGroups', 'list-max-groups'],
-  ];
-  for (const [key, flag] of counts) {
-    const value = toCount(`--${flag}`, str(values, flag));
-    if (value !== undefined) Object.assign(format, { [key]: value });
-  }
-
-  const order = str(values, 'action-order');
-  if (order !== undefined) {
-    try {
-      format.actionOrder = parseActionOrder(order);
-    } catch (err) {
-      throw new GitcimError(err instanceof Error ? err.message : String(err), 2);
+  for (const spec of OPTION_SPECS) {
+    if ('negatable' in spec && spec.negatable && values[spec.negatable] === true) {
+      format[spec.key] = negatedValue(spec);
+      continue;
     }
+    const raw = values[spec.flag];
+    if (raw === undefined || raw === false) continue;
+    format[spec.key] = coerce(spec, raw);
   }
 
-  return format;
+  return format as Partial<Options>;
+}
+
+/** The `parseArgs` option table, derived from the option specs. */
+export function parseArgsOptions(): NonNullable<ParseArgsConfig['options']> {
+  const options: NonNullable<ParseArgsConfig['options']> = {
+    version: { type: 'boolean', short: 'v' },
+    help: { type: 'boolean', short: 'h' },
+  };
+
+  for (const spec of OPTION_SPECS) {
+    options[spec.flag] = { type: spec.kind === 'boolean' ? 'boolean' : 'string' };
+    if ('negatable' in spec && spec.negatable) options[spec.negatable] = { type: 'boolean' };
+  }
+
+  return options;
 }
 
 /** Parse a full argv tail into file lists plus flag values. */
@@ -165,30 +180,16 @@ export function parseCliArgs(argv: string[]): ParsedArgs {
   try {
     const { values } = parseArgs({
       args: rest,
-      options: {
-        group: { type: 'string' },
-        'no-group': { type: 'boolean' },
-        and: { type: 'boolean' },
-        'no-and': { type: 'boolean' },
-        'item-separator': { type: 'string' },
-        'group-separator': { type: 'string' },
-        'item-action-suffix': { type: 'string' },
-        'group-action-suffix': { type: 'string' },
-        'rename-separator': { type: 'string' },
-        'quote-char': { type: 'string' },
-        'action-order': { type: 'string' },
-        overflow: { type: 'string' },
-        'list-overflow': { type: 'string' },
-        'list-indent': { type: 'string' },
-        'list-max-items': { type: 'string' },
-        'list-max-groups': { type: 'string' },
-        version: { type: 'boolean', short: 'v' },
-        help: { type: 'boolean', short: 'h' },
-      },
+      options: parseArgsOptions(),
       strict: true,
       allowPositionals: false,
     });
-    return { ...(include ? { include } : {}), ...(exclude ? { exclude } : {}), values };
+    // No option sets `multiple`, so no value is ever an array.
+    return {
+      ...(include ? { include } : {}),
+      ...(exclude ? { exclude } : {}),
+      values: values as Values,
+    };
   } catch (err) {
     throw new GitcimError(err instanceof Error ? err.message : String(err), 2);
   }

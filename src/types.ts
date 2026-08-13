@@ -48,5 +48,5 @@ export interface Options {
   listMaxItems: number;
   /** Max chunks per list line. 0 means unlimited. */
   listMaxGroups: number;
-  actionOrder: ActionSlot[];
+  actionOrder: readonly ActionSlot[];
 }

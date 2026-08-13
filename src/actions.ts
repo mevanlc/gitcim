@@ -25,7 +25,7 @@ function chmodKind(oldMode: string, newMode: string): ActionKind | undefined {
  */
 export function toItems(
   entries: RawEntry[],
-  order: ActionSlot[] = DEFAULT_OPTIONS.actionOrder,
+  order: readonly ActionSlot[] = DEFAULT_OPTIONS.actionOrder,
 ): Item[] {
   const items: Item[] = [];
 
@@ -60,7 +60,7 @@ export function toItems(
 }
 
 /** Order by action slot, then by path. Both sorts are total, so output is stable. */
-export function sortItems(items: Item[], order: ActionSlot[]): Item[] {
+export function sortItems(items: Item[], order: readonly ActionSlot[]): Item[] {
   const rank = new Map<ActionKind, number>();
   order.forEach((slot, i) => {
     if (slot === 'chmod') {
