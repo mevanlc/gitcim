@@ -26,8 +26,8 @@ describe('OPTION_SPECS', () => {
       renameSeparator: ' to ',
       quoteChar: '"',
       actionOrder: ['add', 'update', 'remove', 'rename', 'copy', 'chmod'],
-      overflow: 0,
-      listOverflow: 0,
+      overflow: 50,
+      listOverflow: 72,
       listIndent: 4,
       listMaxItems: 0,
       listMaxGroups: 0,
@@ -78,8 +78,8 @@ describe('negatedValue', () => {
 
 describe('formatDefault', () => {
   it('labels a zero that means something', () => {
-    expect(formatDefault(SPECS_BY_FLAG.get('overflow')!)).toBe('off');
-    expect(formatDefault(SPECS_BY_FLAG.get('list-overflow')!)).toBe('unlimited');
+    expect(formatDefault(SPECS_BY_FLAG.get('group')!)).toBe('off');
+    expect(formatDefault(SPECS_BY_FLAG.get('list-max-items')!)).toBe('unlimited');
   });
 
   it('shows whitespace in a separator', () => {
@@ -87,6 +87,8 @@ describe('formatDefault', () => {
   });
 
   it('shows a plain number as itself', () => {
+    expect(formatDefault(SPECS_BY_FLAG.get('overflow')!)).toBe('50');
+    expect(formatDefault(SPECS_BY_FLAG.get('list-overflow')!)).toBe('72');
     expect(formatDefault(SPECS_BY_FLAG.get('list-indent')!)).toBe('4');
   });
 

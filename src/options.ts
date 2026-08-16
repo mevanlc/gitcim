@@ -45,6 +45,8 @@ export type OptionSpec =
       kind: 'count';
       key: KeysOfType<number>;
       default: number;
+      /** What zero means, when it has a named disabled or unlimited state. */
+      zeroLabel?: string;
       placeholder: string;
       negatable?: string;
     })
@@ -74,6 +76,7 @@ export const OPTION_SPECS = [
     placeholder: 'N',
     default: 0,
     defaultLabel: 'off',
+    zeroLabel: 'off',
     section: 'Wording',
     help: 'Collapse runs of N or more same-action items into "update: a, b"',
   },
@@ -166,8 +169,8 @@ export const OPTION_SPECS = [
     key: 'overflow',
     flag: 'overflow',
     placeholder: 'N',
-    default: 0,
-    defaultLabel: 'off',
+    default: 50,
+    zeroLabel: 'off',
     section: 'Layout',
     help: 'Spill past N columns into a list',
   },
@@ -176,8 +179,8 @@ export const OPTION_SPECS = [
     key: 'listOverflow',
     flag: 'list-overflow',
     placeholder: 'N',
-    default: 0,
-    defaultLabel: 'unlimited',
+    default: 72,
+    zeroLabel: 'unlimited',
     section: 'Layout',
     help: 'Max width of a list line',
   },
@@ -197,6 +200,7 @@ export const OPTION_SPECS = [
     placeholder: 'N',
     default: 0,
     defaultLabel: 'unlimited',
+    zeroLabel: 'unlimited',
     section: 'Layout',
     help: 'Max items per list line',
   },
@@ -207,6 +211,7 @@ export const OPTION_SPECS = [
     placeholder: 'N',
     default: 0,
     defaultLabel: 'unlimited',
+    zeroLabel: 'unlimited',
     section: 'Layout',
     help: 'Max groups per list line',
   },

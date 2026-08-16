@@ -82,8 +82,9 @@ describe('run', () => {
     const io = capture();
     expect(await run([], { io, cwd: repo, env })).toBe(0);
     expect(io.out).toBe(
-      'add src/new.py, update "a file.md", update src/main.py, ' +
-        'remove src/old.py, rename README.md to READYOU.md, chmod +x run.sh\n',
+      'add src/new.py, update "a file.md"\n\n' +
+        '    - update src/main.py, remove src/old.py\n' +
+        '    - rename README.md to READYOU.md, chmod +x run.sh\n',
     );
   });
 
@@ -95,7 +96,11 @@ describe('run', () => {
 
   it('applies formatting flags', async () => {
     const io = capture();
-    await run(['--group=1', '--group-separator= - ', '--include', 'src'], { io, cwd: repo, env });
+    await run(['--group=1', '--group-separator= - ', '--overflow=0', '--include', 'src'], {
+      io,
+      cwd: repo,
+      env,
+    });
     expect(io.out).toBe('add: src/new.py - update: src/main.py - remove: src/old.py\n');
   });
 
@@ -248,7 +253,7 @@ describe('config file', () => {
 
   it('formats the message from the file it is pointed at', async () => {
     const { env: at, path } = target();
-    writeFileSync(path, '## mine\ngroup = 1\ngroup-separator = " - "\n');
+    writeFileSync(path, '## mine\ngroup = 1\ngroup-separator = " - "\noverflow = 0\n');
 
     const io = capture();
     expect(await run(['--include', 'src'], { io, cwd: repo, env: at })).toBe(0);
@@ -257,7 +262,7 @@ describe('config file', () => {
 
   it('lets a flag override the file', async () => {
     const { env: at, path } = target();
-    writeFileSync(path, 'group = 1\n');
+    writeFileSync(path, 'group = 1\noverflow = 0\n');
 
     const io = capture();
     await run(['--no-group', '--include', 'src'], { io, cwd: repo, env: at });
@@ -270,7 +275,7 @@ describe('config file', () => {
       io,
       cwd: repo,
       env: { GITCIM_CONFIG_FILE: '-' },
-      readStdin: () => Promise.resolve('item-separator = " | "\n'),
+      readStdin: () => Promise.resolve('item-separator = " | "\noverflow = 0\n'),
     });
     expect(code).toBe(0);
     expect(io.out).toBe('add src/new.py | update src/main.py | remove src/old.py\n');
@@ -471,7 +476,7 @@ describe('--config-edit', () => {
     // The edit is what the next run uses.
     const next = capture();
     await run(['--include', 'src'], { io: next, cwd: repo, env: at });
-    expect(next.out).toBe('add: src/new.py; update: src/main.py; remove: src/old.py\n');
+    expect(next.out).toBe('add: src/new.py; update: src/main.py\n\n    - remove: src/old.py\n');
 
     rmSync(dir, { recursive: true, force: true });
   });

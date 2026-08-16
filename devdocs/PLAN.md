@@ -40,6 +40,7 @@ copy README.md to README_COPY.md
 
 # copied README.md to README_COPY.md, then edited README_COPY.md
 # # the copy comes first: README_COPY.md does not exist until it happens
+# --overflow=0
 copy README.md to README_COPY.md, update README_COPY.md
 ```
 
@@ -47,6 +48,7 @@ copy README.md to README_COPY.md, update README_COPY.md
 # # ls -l scripts/install.sh
 # # -rw-r--r-- 1 user group 1234 Jun 1 12:34 scripts/install.sh
 # chmod u+x scripts/install.sh
+# --overflow=0
 remove plans/COMPLETED.md, chmod +x scripts/install.sh
 
 # # ---------------------------------------------------------------
@@ -54,6 +56,7 @@ remove plans/COMPLETED.md, chmod +x scripts/install.sh
 # # ls -l scripts/install.sh
 # # -rwxr--r-- 1 user group 1234 Jun 1 12:34 scripts/install.sh
 # chmod u-x scripts/install.sh
+# --overflow=0
 remove plans/COMPLETED.md, chmod -x scripts/install.sh
 
 # # ---------------------------------------------------------------
@@ -75,59 +78,70 @@ update docs/DOCS.md and remove plans/PLAN.md
 
 ```bash
 # --no-and # default behavior
+# --overflow=0
 add test/test.py, update docs/DOCS.md, remove plans/PLAN.md
 
 # # ---------------------------------------------------------------
 
 # --and
+# --overflow=0
 add test/test.py, update docs/DOCS.md, and remove plans/PLAN.md
 
 # # ---------------------------------------------------------------
 
 # --and --no-oxford-and
+# --overflow=0
 add test/test.py, update docs/DOCS.md and remove plans/PLAN.md
 ```
 
 ```bash
 # --no-group
+# --overflow=0
 add src/new_module.py, update src/main.py, update src/subcommand.py, update src/util/utils.py, remove src/old_module.py
 
 # # ---------------------------------------------------------------
 
 # --no-group
 # --item-separator=' '
+# --overflow=0
 add src/new_module.py update src/main.py update src/subcommand.py update src/util/utils.py remove src/old_module.py
 ```
 
 ```bash
 # --no-group
+# --overflow=0
 add "docs/WEBSITE DESIGN.md", add src/new_module.py, update src/main.py, update src/subcommand.py, update src/util/utils.py, remove src/old_module.py
 
 # # ---------------------------------------------------------------
 
 # --no-group
 # --item-separator=' '
+# --overflow=0
 add "docs/WEBSITE DESIGN.md" add src/new_module.py update src/main.py update src/subcommand.py update src/util/utils.py remove src/old_module.py
 ```
 
 ```bash
 # --group=1 # group action-categories with 1 or more items
+# --overflow=0
 add: src/new_module.py; update: src/main.py, src/subcommand.py, src/util/utils.py; remove: src/old_module.py
 
 # # ---------------------------------------------------------------
 
 # --group=1 # group action-categories with 1 or more items
 # --group-separator=' - '
+# --overflow=0
 add: src/new_module.py - update: src/main.py, src/subcommand.py, src/util/utils.py - remove: src/old_module.py
 
 # --group=1 # group action-categories with 1 or more items
 # --group-separator=' - '
 # --group-action-suffix=' '
+# --overflow=0
 add src/new_module.py - update src/main.py, src/subcommand.py, src/util/utils.py - remove src/old_module.py
 ```
 
 ```bash
 # --group=2 # group action-categories with 2 or more items
+# --overflow=0
 add src/new_module.py; update: src/main.py, src/subcommand.py, src/util/utils.py; remove src/old_module.py
 ```
 
@@ -145,15 +159,14 @@ update src/main.py and update src/subcommand.py
 ```
 
 ```bash
-# --overflow=50
+# --list-overflow=0
 add src/new_module.py, update src/main.py
 
     - update src/subcommand.py, update src/util/utils.py, remove src/old_module.py
 
 # # --------------------------------------------------------------
 
-# --overflow=50
-# --list-overflow=72
+# defaults: --overflow=50, --list-overflow=72
 add src/new_module.py, update src/main.py
 
     - update src/subcommand.py, update src/util/utils.py
@@ -161,8 +174,7 @@ add src/new_module.py, update src/main.py
 
 # # --------------------------------------------------------------
 
-# --overflow=50
-# --list-overflow=72
+# defaults: --overflow=50, --list-overflow=72
 # --list-indent=2
 add src/new_module.py, update src/main.py
 

@@ -257,9 +257,9 @@ function valueDoc(spec: OptionSpec): string {
     case 'boolean':
       return 'true or false.';
     case 'count':
-      return spec.defaultLabel === undefined
+      return spec.zeroLabel === undefined
         ? 'A non-negative integer.'
-        : `A non-negative integer; 0 means ${spec.defaultLabel}.`;
+        : `A non-negative integer; 0 means ${spec.zeroLabel}.`;
     case 'order':
       return `An array holding any of ${ACTION_SLOTS.map((s) => `"${s}"`).join(', ')}, in the order you want them; names left out keep their default order at the end.`;
   }

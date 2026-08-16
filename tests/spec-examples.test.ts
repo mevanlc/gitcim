@@ -78,16 +78,19 @@ const CASES: Case[] = [
     name: 'copy that was then edited',
     // Listed update-first on purpose: the sort is what puts the copy ahead of it.
     items: [update('README_COPY.md'), item('copy', 'README_COPY.md', 'README.md')],
+    opts: { overflow: 0 },
     expected: 'copy README.md to README_COPY.md, update README_COPY.md',
   },
   {
     name: 'chmod +x alongside a removal',
     items: [item('chmod+x', 'scripts/install.sh'), remove('plans/COMPLETED.md')],
+    opts: { overflow: 0 },
     expected: 'remove plans/COMPLETED.md, chmod +x scripts/install.sh',
   },
   {
     name: 'chmod -x alongside a removal',
     items: [item('chmod-x', 'scripts/install.sh'), remove('plans/COMPLETED.md')],
+    opts: { overflow: 0 },
     expected: 'remove plans/COMPLETED.md, chmod -x scripts/install.sh',
   },
   {
@@ -109,23 +112,25 @@ const CASES: Case[] = [
   {
     name: 'three items, --no-and (default)',
     items: [update('docs/DOCS.md'), remove('plans/PLAN.md'), add('test/test.py')],
+    opts: { overflow: 0 },
     expected: 'add test/test.py, update docs/DOCS.md, remove plans/PLAN.md',
   },
   {
     name: 'three items, --and keeps the serial comma',
     items: [update('docs/DOCS.md'), remove('plans/PLAN.md'), add('test/test.py')],
-    opts: { and: true },
+    opts: { and: true, overflow: 0 },
     expected: 'add test/test.py, update docs/DOCS.md, and remove plans/PLAN.md',
   },
   {
     name: 'three items, --and with --no-oxford-and omits serial comma',
     items: [update('docs/DOCS.md'), remove('plans/PLAN.md'), add('test/test.py')],
-    opts: { and: true, oxfordAnd: false },
+    opts: { and: true, oxfordAnd: false, overflow: 0 },
     expected: 'add test/test.py, update docs/DOCS.md and remove plans/PLAN.md',
   },
   {
     name: '--no-group',
     items: FIVE,
+    opts: { overflow: 0 },
     expected:
       'add src/new_module.py, update src/main.py, update src/subcommand.py, ' +
       'update src/util/utils.py, remove src/old_module.py',
@@ -133,7 +138,7 @@ const CASES: Case[] = [
   {
     name: '--no-group with --item-separator=" "',
     items: FIVE,
-    opts: { itemSeparator: ' ' },
+    opts: { itemSeparator: ' ', overflow: 0 },
     expected:
       'add src/new_module.py update src/main.py update src/subcommand.py ' +
       'update src/util/utils.py remove src/old_module.py',
@@ -141,6 +146,7 @@ const CASES: Case[] = [
   {
     name: '--no-group with a path that needs quoting',
     items: [...FIVE, add('docs/WEBSITE DESIGN.md')],
+    opts: { overflow: 0 },
     expected:
       'add "docs/WEBSITE DESIGN.md", add src/new_module.py, update src/main.py, ' +
       'update src/subcommand.py, update src/util/utils.py, remove src/old_module.py',
@@ -148,7 +154,7 @@ const CASES: Case[] = [
   {
     name: '--no-group, quoted path, --item-separator=" "',
     items: [...FIVE, add('docs/WEBSITE DESIGN.md')],
-    opts: { itemSeparator: ' ' },
+    opts: { itemSeparator: ' ', overflow: 0 },
     expected:
       'add "docs/WEBSITE DESIGN.md" add src/new_module.py update src/main.py ' +
       'update src/subcommand.py update src/util/utils.py remove src/old_module.py',
@@ -156,7 +162,7 @@ const CASES: Case[] = [
   {
     name: '--group=1 groups every action',
     items: FIVE,
-    opts: { group: 1 },
+    opts: { group: 1, overflow: 0 },
     expected:
       'add: src/new_module.py; update: src/main.py, src/subcommand.py, src/util/utils.py; ' +
       'remove: src/old_module.py',
@@ -164,7 +170,7 @@ const CASES: Case[] = [
   {
     name: '--group=1 with --group-separator=" - "',
     items: FIVE,
-    opts: { group: 1, groupSeparator: ' - ' },
+    opts: { group: 1, groupSeparator: ' - ', overflow: 0 },
     expected:
       'add: src/new_module.py - update: src/main.py, src/subcommand.py, src/util/utils.py - ' +
       'remove: src/old_module.py',
@@ -172,7 +178,7 @@ const CASES: Case[] = [
   {
     name: '--group=1 with --group-action-suffix=" "',
     items: FIVE,
-    opts: { group: 1, groupSeparator: ' - ', groupActionSuffix: ' ' },
+    opts: { group: 1, groupSeparator: ' - ', groupActionSuffix: ' ', overflow: 0 },
     expected:
       'add src/new_module.py - update src/main.py, src/subcommand.py, src/util/utils.py - ' +
       'remove src/old_module.py',
@@ -180,7 +186,7 @@ const CASES: Case[] = [
   {
     name: '--group=2 leaves single-item actions expanded',
     items: FIVE,
-    opts: { group: 2 },
+    opts: { group: 2, overflow: 0 },
     expected:
       'add src/new_module.py; update: src/main.py, src/subcommand.py, src/util/utils.py; ' +
       'remove src/old_module.py',
@@ -198,9 +204,9 @@ const CASES: Case[] = [
     expected: 'update src/main.py and update src/subcommand.py',
   },
   {
-    name: '--overflow=50 spills into a list',
+    name: '--list-overflow=0 leaves overflow bullets unlimited',
     items: FIVE,
-    opts: { overflow: 50 },
+    opts: { listOverflow: 0 },
     expected: [
       'add src/new_module.py, update src/main.py',
       '',
@@ -208,9 +214,8 @@ const CASES: Case[] = [
     ].join('\n'),
   },
   {
-    name: '--overflow=50 --list-overflow=72 wraps the list',
+    name: 'default overflow limits wrap the list',
     items: FIVE,
-    opts: { overflow: 50, listOverflow: 72 },
     expected: [
       'add src/new_module.py, update src/main.py',
       '',
@@ -221,7 +226,7 @@ const CASES: Case[] = [
   {
     name: '--list-indent=2',
     items: FIVE,
-    opts: { overflow: 50, listOverflow: 72, listIndent: 2 },
+    opts: { listIndent: 2 },
     expected: [
       'add src/new_module.py, update src/main.py',
       '',

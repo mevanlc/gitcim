@@ -5,7 +5,9 @@ guessing at intent — `gitcim` reads `git diff --cached` and reports the mechan
 
 ```console
 $ git add -A && gitcim
-add src/parser.ts, update src/main.ts, remove legacy.ts, rename old.md to new.md, chmod +x run.sh
+add src/parser.ts, update src/main.ts
+
+    - remove legacy.ts, rename old.md to new.md, chmod +x run.sh
 ```
 
 For messages that infer _why_ a change was made, see
@@ -91,17 +93,17 @@ to anything less.
 
 | flag                  | default   | effect                                    |
 | --------------------- | --------- | ----------------------------------------- |
-| `--overflow=N`        | off       | Spill past N columns into a bulleted list |
-| `--list-overflow=N`   | unlimited | Max width of a list line                  |
+| `--overflow=N`        | 50        | Spill past N columns into a bulleted list |
+| `--list-overflow=N`   | 72        | Max width of a list line                  |
 | `--list-indent=N`     | 4         | Spaces before each bullet                 |
 | `--list-max-items=N`  | unlimited | Max items per list line                   |
 | `--list-max-groups=N` | unlimited | Max groups per list line                  |
 
 ```console
-$ gitcim --group=1
+$ gitcim --group=1 --overflow=0
 add: src/new_module.py; update: src/main.py, src/subcommand.py; remove: src/old_module.py
 
-$ gitcim --overflow=50 --list-overflow=72
+$ gitcim
 add src/new_module.py, update src/main.py
 
     - update src/subcommand.py, update src/util/utils.py

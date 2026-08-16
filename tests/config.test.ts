@@ -148,6 +148,12 @@ describe('renderConfig', () => {
       expect(text, `missing ${spec.flag}`).toContain(`\n${spec.flag} = `);
       expect(text).toContain(`## ${spec.help}.`);
     }
+    expect(text).toContain(
+      '## A non-negative integer; 0 means off.\n## Flag: --overflow=N\noverflow = 50',
+    );
+    expect(text).toContain(
+      '## A non-negative integer; 0 means unlimited.\n## Flag: --list-overflow=N\nlist-overflow = 72',
+    );
   });
 
   it('sets nothing in the unset variant, while keeping the prose', () => {
