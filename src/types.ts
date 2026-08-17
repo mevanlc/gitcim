@@ -47,6 +47,12 @@ export interface Options {
   summarize: SummarizeMode;
   /** Keep only the first line of the generated message. */
   excludeBody: boolean;
+  /** Group body items by action. Empty disables; otherwise this prefixes continuation lines. */
+  groupGroup: string;
+  /** Appended to each nonfinal physical line in a grouped action. */
+  groupGroupCont: string;
+  /** Between operands on one grouped body line. */
+  groupGroupItemSeparator: string;
   /** Max width of the first line before spilling into a list. 0 disables. */
   overflow: number;
   /** Max width of a list line, indent and bullet included. 0 means unlimited. */

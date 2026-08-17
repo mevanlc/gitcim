@@ -69,6 +69,11 @@ describe('parseCliArgs', () => {
     expect(parseCliArgs(['--summarize=always']).values.summarize).toBe('always');
   });
 
+  it('gives bare --group-group its bullet continuation prefix', () => {
+    expect(parseCliArgs(['--group-group']).values['group-group']).toBe('  - ');
+    expect(parseCliArgs(['--group-group=-- ']).values['group-group']).toBe('-- ');
+  });
+
   it('rejects an unknown flag with exit code 2', () => {
     expect(() => parseCliArgs(['--nope'])).toThrow(GitcimError);
     try {
@@ -97,6 +102,9 @@ describe('buildFormat', () => {
         'group-action-suffix': ' ',
         'rename-separator': ' -> ',
         'quote-char': "'",
+        'group-group': '  ',
+        'group-group-cont': ' ...',
+        'group-group-item-sep': ' ',
       }),
     ).toEqual({
       itemSeparator: ' ',
@@ -105,6 +113,9 @@ describe('buildFormat', () => {
       groupActionSuffix: ' ',
       renameSeparator: ' -> ',
       quoteChar: "'",
+      groupGroup: '  ',
+      groupGroupCont: ' ...',
+      groupGroupItemSeparator: ' ',
     });
   });
 

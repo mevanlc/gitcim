@@ -40,6 +40,8 @@ export type OptionSpec =
       key: KeysOfType<string>;
       default: string;
       placeholder: string;
+      /** Value supplied when the flag appears without `=VALUE`. */
+      bare?: string;
     })
   | (SpecBase & {
       kind: 'count';
@@ -192,6 +194,35 @@ export const OPTION_SPECS = [
     help: 'Keep only the first line of the generated message',
   },
   {
+    kind: 'string',
+    key: 'groupGroup',
+    flag: 'group-group',
+    placeholder: 'S',
+    default: '',
+    defaultLabel: 'off',
+    bare: '  - ',
+    section: 'Layout',
+    help: 'Group body paths by action; S prefixes continuation lines',
+  },
+  {
+    kind: 'string',
+    key: 'groupGroupCont',
+    flag: 'group-group-cont',
+    placeholder: 'S',
+    default: '',
+    section: 'Layout',
+    help: 'After each grouped body line that continues',
+  },
+  {
+    kind: 'string',
+    key: 'groupGroupItemSeparator',
+    flag: 'group-group-item-sep',
+    placeholder: 'S',
+    default: ', ',
+    section: 'Layout',
+    help: 'Between paths on one grouped body line',
+  },
+  {
     kind: 'count',
     key: 'overflow',
     flag: 'overflow',
@@ -265,7 +296,9 @@ export function flagSyntax(spec: OptionSpec): string {
       ? ''
       : spec.kind === 'choice'
         ? `[=${spec.values.join('|')}]`
-        : `=${spec.placeholder}`;
+        : spec.kind === 'string' && spec.bare !== undefined
+          ? `[=${spec.placeholder}]`
+          : `=${spec.placeholder}`;
   const negated = 'negatable' in spec && spec.negatable ? `, --${spec.negatable}` : '';
   return `--${spec.flag}${value}${negated}`;
 }

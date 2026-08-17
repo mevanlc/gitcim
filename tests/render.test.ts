@@ -151,6 +151,63 @@ describe('renderLine', () => {
   });
 });
 
+describe('--group-group', () => {
+  const items = [
+    add('subject'),
+    add('one'),
+    add('two'),
+    add('three'),
+    update('alpha'),
+    update('beta path'),
+    remove('old'),
+  ];
+
+  it('groups body paths by action and uses the bare-flag prefix', () => {
+    expect(render(items, { overflow: 11, listOverflow: 25, groupGroup: '  - ' })).toBe(
+      [
+        'add subject',
+        '',
+        '- add: one, two, three',
+        '- update: alpha',
+        '  - "beta path"',
+        '- remove: old',
+      ].join('\n'),
+    );
+  });
+
+  it('uses custom continuation, line suffix, and item separator strings', () => {
+    expect(
+      render(items, {
+        overflow: 11,
+        listOverflow: 23,
+        groupGroup: '      ',
+        groupGroupCont: ',',
+        groupGroupItemSeparator: ' ',
+      }),
+    ).toBe(
+      [
+        'add subject',
+        '',
+        '- add: one two three',
+        '- update: alpha,',
+        '      "beta path"',
+        '- remove: old',
+      ].join('\n'),
+    );
+  });
+
+  it('honours listMaxItems and permits a single overlong operand', () => {
+    expect(
+      render([add('head'), add('a'), add('bbbbbbbbbbbb')], {
+        overflow: 8,
+        listOverflow: 8,
+        listMaxItems: 1,
+        groupGroup: '-- ',
+      }),
+    ).toBe('add head\n\n- add: a\n-- bbbbbbbbbbbb');
+  });
+});
+
 describe('render', () => {
   it('is empty for no items', () => {
     expect(render([])).toBe('');

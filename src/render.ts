@@ -306,6 +306,8 @@ function fitCount(items: Item[], opts: Options, limits: Limits): number {
 }
 
 function renderBody(items: Item[], opts: Options): string {
+  if (opts.groupGroup !== '') return renderGroupedBody(items, opts);
+
   let rest = items;
   const indent = ' '.repeat(opts.listIndent);
   const bullets: string[] = [];
@@ -320,6 +322,55 @@ function renderBody(items: Item[], opts: Options): string {
     rest = rest.slice(count);
   }
   return bullets.join('\n');
+}
+
+/**
+ * Render each contiguous action run behind one label. Continuation lines contain
+ * operands only and begin with the exact prefix supplied by `--group-group`.
+ */
+function renderGroupedBody(items: Item[], opts: Options): string {
+  const lines: string[] = [];
+  const indent = ' '.repeat(opts.listIndent);
+
+  for (let start = 0; start < items.length;) {
+    const kind = items[start]!.kind;
+    let end = start + 1;
+    while (end < items.length && items[end]!.kind === kind) end++;
+
+    let rest = items.slice(start, end);
+    let first = true;
+    while (rest.length > 0) {
+      const prefix = first
+        ? `${indent}- ${LABELS[kind]}${opts.groupActionSuffix}`
+        : opts.groupGroup;
+      const maxItems =
+        opts.listMaxItems > 0 ? Math.min(opts.listMaxItems, rest.length) : rest.length;
+      let count = 1;
+
+      for (let candidate = 1; candidate <= maxItems; candidate++) {
+        const continues = candidate < rest.length;
+        const text = rest
+          .slice(0, candidate)
+          .map((item) => operand(item, opts))
+          .join(opts.groupGroupItemSeparator);
+        const rendered = `${prefix}${text}${continues ? opts.groupGroupCont : ''}`;
+        if (opts.listOverflow === 0 || rendered.length <= opts.listOverflow) count = candidate;
+      }
+
+      const continues = count < rest.length;
+      const text = rest
+        .slice(0, count)
+        .map((item) => operand(item, opts))
+        .join(opts.groupGroupItemSeparator);
+      lines.push(`${prefix}${text}${continues ? opts.groupGroupCont : ''}`);
+      rest = rest.slice(count);
+      first = false;
+    }
+
+    start = end;
+  }
+
+  return lines.join('\n');
 }
 
 /** Render the ordinary first line and only its overflow remainder as a body. */

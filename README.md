@@ -92,15 +92,18 @@ to anything less.
 
 ### Layout
 
-| flag                  | default   | effect                                       |
-| --------------------- | --------- | -------------------------------------------- |
-| `--summarize[=MODE]`  | never     | Summarize on overflow, always, or never      |
-| `--exclude-body`      | off       | Keep only the generated message's first line |
-| `--overflow=N`        | 50        | Spill past N columns into a bulleted list    |
-| `--list-overflow=N`   | 72        | Max width of a list line                     |
-| `--list-indent=N`     | 0         | Spaces before each bullet                    |
-| `--list-max-items=N`  | unlimited | Max items per list line                      |
-| `--list-max-groups=N` | unlimited | Max groups per list line                     |
+| flag                       | default   | effect                                          |
+| -------------------------- | --------- | ----------------------------------------------- |
+| `--summarize[=MODE]`       | never     | Summarize on overflow, always, or never         |
+| `--exclude-body`           | off       | Keep only the generated message's first line    |
+| `--group-group[=S]`        | off       | Group body paths; S prefixes continuation lines |
+| `--group-group-cont=S`     | `""`      | After each grouped body line that continues     |
+| `--group-group-item-sep=S` | `", "`    | Between paths on one grouped body line          |
+| `--overflow=N`             | 50        | Spill past N columns into a bulleted list       |
+| `--list-overflow=N`        | 72        | Max width of a list line                        |
+| `--list-indent=N`          | 0         | Spaces before each bullet                       |
+| `--list-max-items=N`       | unlimited | Max items per list line                         |
+| `--list-max-groups=N`      | unlimited | Max groups per list line                        |
 
 ```console
 $ gitcim --group=1 --overflow=0
@@ -115,6 +118,11 @@ add src/new_module.py, update src/main.py
 
 Packing is greedy and measures the line it is about to print. A single item is never
 broken, so an unusually long path simply overruns the limit.
+
+Bare `--group-group` groups each action in the body and prefixes wrapped operands with
+`"  - "`. An explicit value replaces that prefix. `--group-group-cont` is appended to
+every nonfinal line in an action group, while `--group-group-item-sep` joins operands
+that fit on the same physical line. These strings are used exactly as supplied.
 
 ### Summaries
 

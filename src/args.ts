@@ -192,11 +192,11 @@ export function coerce(
   }
 }
 
-/** Supply the declared value for choice flags used without `=VALUE`. */
-export function expandBareChoices(argv: string[]): string[] {
+/** Supply the declared value for flags used without `=VALUE`. */
+export function expandBareValues(argv: string[]): string[] {
   const bare = new Map(
     OPTION_SPECS.flatMap((spec) =>
-      spec.kind === 'choice' && spec.bare !== undefined ? [[`--${spec.flag}`, spec.bare]] : [],
+      'bare' in spec && spec.bare !== undefined ? [[`--${spec.flag}`, spec.bare]] : [],
     ),
   );
   let literal = false;
@@ -247,7 +247,7 @@ export function parseArgsOptions(): NonNullable<ParseArgsConfig['options']> {
 
 /** Parse a full argv tail into file lists plus flag values. */
 export function parseCliArgs(argv: string[]): ParsedArgs {
-  const { include, exclude, rest } = extractFileLists(expandBareChoices(argv));
+  const { include, exclude, rest } = extractFileLists(expandBareValues(argv));
 
   try {
     const { values } = parseArgs({
