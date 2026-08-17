@@ -35,7 +35,7 @@ function fakeGit(replies: {
 describe('generate', () => {
   it('describes the staged changes', async () => {
     const message = await generate({ run: fakeGit({ staged: STAGED }) });
-    expect(message).toBe('add src/new.py, update src/main.py\n\n    - remove src/old.py');
+    expect(message).toBe('add src/new.py, update src/main.py\n\n- remove src/old.py');
   });
 
   it('passes formatting options through', async () => {

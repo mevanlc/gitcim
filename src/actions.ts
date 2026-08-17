@@ -47,7 +47,12 @@ export function toItems(
         // with the mode it has, exactly as an untracked `add` would be.
         const chmod = kind === 'rename' ? chmodKind(entry.oldMode, entry.newMode) : undefined;
         if (chmod) items.push({ kind: chmod, path: entry.path });
-        if (entry.oldSha !== entry.newSha) items.push({ kind: 'update', path: entry.path });
+        // A rename describes the whole old-path-to-new-path transition, including
+        // any content edits. A copy needs the extra update to distinguish an
+        // unchanged duplicate from one that was edited after it was made.
+        if (kind === 'copy' && entry.oldSha !== entry.newSha) {
+          items.push({ kind: 'update', path: entry.path });
+        }
         break;
       }
       default: {

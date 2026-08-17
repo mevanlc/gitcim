@@ -5,9 +5,9 @@ import { resolveOptions } from './options.js';
 import { GitcimError } from './errors.js';
 import type { Options } from './types.js';
 
-export type { ActionKind, ActionSlot, Item, Options, RawEntry } from './types.js';
+export type { ActionKind, ActionSlot, Item, Options, RawEntry, SummarizeMode } from './types.js';
 export { DEFAULT_OPTIONS, resolveOptions, parseActionOrder, ACTION_SLOTS } from './options.js';
-export { render, renderLine, quotePath } from './render.js';
+export { render, renderLine, quotePath, summarizeItems } from './render.js';
 export { toItems, sortItems, slotOf } from './actions.js';
 export { runGit, parseRaw, getStagedEntries, toPathspecs, type GitRunner } from './git.js';
 export {

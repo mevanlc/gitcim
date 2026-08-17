@@ -163,7 +163,7 @@ describe('render', () => {
   it('packs right up to the overflow limit', () => {
     // "update a, update b" is exactly 18 characters.
     expect(render([update('a'), update('b')], { overflow: 18 })).toBe('update a, update b');
-    expect(render([update('a'), update('b')], { overflow: 17 })).toBe('update a\n\n    - update b');
+    expect(render([update('a'), update('b')], { overflow: 17 })).toBe('update a\n\n- update b');
   });
 
   it('keeps one item on the first line even when it overflows alone', () => {
@@ -175,30 +175,28 @@ describe('render', () => {
       overflow: 8,
       listOverflow: 10,
     });
-    expect(out).toBe('update a\n\n    - update bbbbbbbbbbbbbbbb');
+    expect(out).toBe('update a\n\n- update bbbbbbbbbbbbbbbb');
   });
 
   it('treats listOverflow of 0 as unlimited', () => {
     const items = [update('a'), update('b'), update('c')];
-    expect(render(items, { overflow: 8 })).toBe('update a\n\n    - update b, update c');
+    expect(render(items, { overflow: 8 })).toBe('update a\n\n- update b, update c');
   });
 
   it('counts the indent and bullet against listOverflow', () => {
     const items = [update('a'), update('b'), update('c')];
     // "    - update b, update c" is 24 characters; one less forces a second bullet.
-    expect(render(items, { overflow: 8, listOverflow: 24 })).toBe(
+    expect(render(items, { overflow: 8, listOverflow: 24, listIndent: 4 })).toBe(
       'update a\n\n    - update b, update c',
     );
-    expect(render(items, { overflow: 8, listOverflow: 23 })).toBe(
+    expect(render(items, { overflow: 8, listOverflow: 23, listIndent: 4 })).toBe(
       'update a\n\n    - update b\n    - update c',
     );
   });
 
   it('applies --and to the last bullet, not the first line', () => {
     const items = [update('a'), update('b'), update('c')];
-    expect(render(items, { overflow: 8, and: true })).toBe(
-      'update a\n\n    - update b and update c',
-    );
+    expect(render(items, { overflow: 8, and: true })).toBe('update a\n\n- update b and update c');
   });
 
   it('separates the first line from the list with a blank line', () => {

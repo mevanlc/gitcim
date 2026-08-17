@@ -150,6 +150,10 @@ function validate(spec: OptionSpec, value: TomlValue, source: string): TomlValue
   switch (spec.kind) {
     case 'string':
       return typeof value === 'string' ? value : reject('a string');
+    case 'choice':
+      return typeof value === 'string' && spec.values.includes(value)
+        ? value
+        : reject(`one of ${spec.values.map((choice) => JSON.stringify(choice)).join(', ')}`);
     case 'boolean':
       return typeof value === 'boolean' ? value : reject('true or false');
     case 'count':
@@ -254,6 +258,8 @@ function valueDoc(spec: OptionSpec): string {
   switch (spec.kind) {
     case 'string':
       return 'A string.';
+    case 'choice':
+      return `One of ${spec.values.map((choice) => JSON.stringify(choice)).join(', ')}.`;
     case 'boolean':
       return 'true or false.';
     case 'count':
@@ -317,6 +323,8 @@ function schemaType(spec: OptionSpec): Record<string, unknown> {
   switch (spec.kind) {
     case 'string':
       return { type: 'string' };
+    case 'choice':
+      return { type: 'string', enum: [...spec.values] };
     case 'boolean':
       return { type: 'boolean' };
     case 'count':

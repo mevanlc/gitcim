@@ -1,5 +1,6 @@
-import type { ActionKind, Item, Options } from './types.js';
+import type { ActionKind, ActionSlot, Item, Options } from './types.js';
 import { DEFAULT_OPTIONS } from './options.js';
+import { GitcimError } from './errors.js';
 
 const LABELS: Record<ActionKind, string> = {
   add: 'add',
@@ -105,6 +106,173 @@ export function renderLine(items: Item[], opts: Options, isLast = false): string
     .join('');
 }
 
+const KINDS_BY_SLOT: Record<ActionSlot, readonly ActionKind[]> = {
+  add: ['add'],
+  update: ['update'],
+  remove: ['remove'],
+  rename: ['rename'],
+  copy: ['copy'],
+  chmod: ['chmod+x', 'chmod-x'],
+};
+
+function slotOf(kind: ActionKind): ActionSlot {
+  return kind === 'chmod+x' || kind === 'chmod-x' ? 'chmod' : kind;
+}
+
+/** The least-compressed summary: paths for single actions, counts for repeated ones. */
+function detailedSummary(items: Item[], opts: Options): string {
+  const byKind = new Map<ActionKind, Item[]>();
+  for (const item of items) {
+    const group = byKind.get(item.kind) ?? [];
+    group.push(item);
+    byKind.set(item.kind, group);
+  }
+
+  const parts: string[] = [];
+  for (const slot of opts.actionOrder) {
+    for (const kind of KINDS_BY_SLOT[slot]) {
+      const group = byKind.get(kind) ?? [];
+      if (group.length === 0) continue;
+      parts.push(
+        group.length === 1 ? renderLine(group, opts) : `${LABELS[kind]} ${group.length} files`,
+      );
+    }
+  }
+  return parts.join(', ');
+}
+
+interface CountSummary {
+  counts: Record<ActionSlot, number>;
+  labels: Record<ActionSlot, string>;
+  units: Record<ActionSlot, boolean>;
+  spaces: Record<ActionSlot, boolean>;
+  separator: string;
+}
+
+function countSummary(items: Item[]): CountSummary {
+  const counts: Record<ActionSlot, number> = {
+    add: 0,
+    update: 0,
+    remove: 0,
+    rename: 0,
+    copy: 0,
+    chmod: 0,
+  };
+  for (const item of items) counts[slotOf(item.kind)]++;
+
+  return {
+    counts,
+    labels: {
+      add: 'add',
+      update: 'update',
+      remove: 'remove',
+      rename: 'rename',
+      copy: 'copy',
+      chmod: 'chmod',
+    },
+    units: { add: true, update: true, remove: true, rename: true, copy: true, chmod: true },
+    spaces: { add: true, update: true, remove: true, rename: true, copy: true, chmod: true },
+    separator: ', ',
+  };
+}
+
+function renderCountSummary(summary: CountSummary, order: readonly ActionSlot[]): string {
+  return order
+    .filter((slot) => summary.counts[slot] > 0)
+    .map((slot) => {
+      const count = summary.counts[slot];
+      const gap = summary.spaces[slot] ? ' ' : '';
+      const unit = summary.units[slot] ? ` ${count === 1 ? 'file' : 'files'}` : '';
+      return `${summary.labels[slot]}${gap}${count}${unit}`;
+    })
+    .join(summary.separator);
+}
+
+function rightToLeft(slots: readonly ActionSlot[], summary: CountSummary): ActionSlot[] {
+  return slots.filter((slot) => summary.counts[slot] > 0).reverse();
+}
+
+/**
+ * Produce progressively shorter summaries, preserving each intermediate form
+ * so the first one that fits loses as little information as possible.
+ */
+function summaryCandidates(items: Item[], opts: Options): string[] {
+  const candidates = [detailedSummary(items, opts)];
+  const summary = countSummary(items);
+  const push = () => {
+    const candidate = renderCountSummary(summary, opts.actionOrder);
+    const previous = candidates.at(-1) ?? '';
+    if (candidate !== previous && candidate.length < previous.length) candidates.push(candidate);
+  };
+
+  push();
+
+  // Fold special actions into their broader category, starting at the right.
+  const folds = (
+    [
+      { source: 'copy', target: 'add' },
+      { source: 'chmod', target: 'update' },
+    ] satisfies Array<{ source: ActionSlot; target: ActionSlot }>
+  ).sort((a, b) => opts.actionOrder.indexOf(b.source) - opts.actionOrder.indexOf(a.source));
+  for (const { source, target } of folds) {
+    if (summary.counts[source] === 0) continue;
+    summary.counts[target] += summary.counts[source];
+    summary.counts[source] = 0;
+    push();
+  }
+
+  // Short words, then no units, then Git's one-letter action codes.
+  const synonyms: Partial<Record<ActionSlot, string>> = { remove: 'rm', rename: 'mv' };
+  for (const slot of rightToLeft(opts.actionOrder, summary)) {
+    const label = synonyms[slot];
+    if (label === undefined) continue;
+    summary.labels[slot] = label;
+    push();
+  }
+  for (const slot of rightToLeft(opts.actionOrder, summary)) {
+    summary.units[slot] = false;
+    push();
+  }
+
+  const codes: Record<ActionSlot, string> = {
+    add: 'A',
+    update: 'M',
+    remove: 'D',
+    rename: 'R',
+    copy: 'C',
+    chmod: 'X',
+  };
+  for (const slot of rightToLeft(opts.actionOrder, summary)) {
+    summary.labels[slot] = codes[slot];
+    push();
+  }
+  for (const slot of rightToLeft(opts.actionOrder, summary)) {
+    summary.spaces[slot] = false;
+    push();
+  }
+
+  summary.separator = ' ';
+  push();
+  summary.separator = '';
+  push();
+
+  const total = String(items.length);
+  if (total.length < (candidates.at(-1)?.length ?? Infinity)) candidates.push(total);
+  return candidates;
+}
+
+/** Summarize all actions on one line, compressing until it fits `--overflow`. */
+export function summarizeItems(items: Item[], opts: Options): string {
+  const candidates = summaryCandidates(items, opts);
+  if (opts.overflow === 0) return candidates[0] ?? '';
+  const fitting = candidates.find((candidate) => candidate.length <= opts.overflow);
+  if (fitting !== undefined) return fitting;
+  throw new GitcimError(
+    `cannot summarize ${items.length} changes within --overflow=${opts.overflow}`,
+    2,
+  );
+}
+
 interface Limits {
   /** Max rendered width including `prefixLen`. 0 means unlimited. */
   width: number;
@@ -137,22 +305,8 @@ function fitCount(items: Item[], opts: Options, limits: Limits): number {
   return count;
 }
 
-/** Render items as the final message: a first line, plus an overflow list if needed. */
-export function render(items: Item[], overrides: Partial<Options> = {}): string {
-  const opts: Options = { ...DEFAULT_OPTIONS, ...overrides };
-  if (items.length === 0) return '';
-
-  const headCount = fitCount(items, opts, {
-    width: opts.overflow,
-    maxItems: 0,
-    maxGroups: 0,
-    prefixLen: 0,
-  });
-  const head = renderLine(items.slice(0, headCount), opts, headCount === items.length);
-
-  let rest = items.slice(headCount);
-  if (rest.length === 0) return head;
-
+function renderBody(items: Item[], opts: Options): string {
+  let rest = items;
   const indent = ' '.repeat(opts.listIndent);
   const bullets: string[] = [];
   while (rest.length > 0) {
@@ -165,6 +319,36 @@ export function render(items: Item[], overrides: Partial<Options> = {}): string 
     bullets.push(`${indent}- ${renderLine(rest.slice(0, count), opts, count === rest.length)}`);
     rest = rest.slice(count);
   }
+  return bullets.join('\n');
+}
 
-  return `${head}\n\n${bullets.join('\n')}`;
+/** Render the ordinary first line and only its overflow remainder as a body. */
+function renderDetailed(items: Item[], opts: Options): string {
+  const headCount = fitCount(items, opts, {
+    width: opts.overflow,
+    maxItems: 0,
+    maxGroups: 0,
+    prefixLen: 0,
+  });
+  const head = renderLine(items.slice(0, headCount), opts, headCount === items.length);
+
+  const rest = items.slice(headCount);
+  if (rest.length === 0) return head;
+  return `${head}\n\n${renderBody(rest, opts)}`;
+}
+
+/** Render items as a commit-message first line plus an optional detailed body. */
+export function render(items: Item[], overrides: Partial<Options> = {}): string {
+  const opts: Options = { ...DEFAULT_OPTIONS, ...overrides };
+  if (items.length === 0) return '';
+
+  const summarize =
+    opts.summarize === 'always' ||
+    (opts.summarize === 'overflow' &&
+      opts.overflow > 0 &&
+      renderLine(items, opts, true).length > opts.overflow);
+  const message = summarize
+    ? `${summarizeItems(items, opts)}\n\n${renderBody(items, opts)}`
+    : renderDetailed(items, opts);
+  return opts.excludeBody ? (message.split('\n', 1)[0] ?? '') : message;
 }

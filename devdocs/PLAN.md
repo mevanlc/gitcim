@@ -2,8 +2,9 @@
 
 command line tool kind of like ~/p/my/gitmsg except the messages are more mechanical
 
-Every example below is transcribed as a test case in `tests/spec-examples.test.ts`, so
-this file and the implementation cannot drift apart silently.
+Every detailed-rendering example below is transcribed as a test case in
+`tests/spec-examples.test.ts`; the summary ladder is covered by `tests/summary.test.ts`,
+so this file and the implementation cannot drift apart silently.
 
 Items are ordered by `--action-order`, which defaults to `add,update,remove,rename,copy,chmod`.
 Within one action, paths sort in byte order.
@@ -43,6 +44,10 @@ copy README.md to README_COPY.md
 # --overflow=0
 copy README.md to README_COPY.md, update README_COPY.md
 ```
+
+A rename subsumes content edits made during the move, so an edited rename still
+produces only `rename <old> to <new>`. Copies retain the follow-up `update`, because
+it distinguishes an unchanged duplicate from one edited after it was made.
 
 ```bash
 # # ls -l scripts/install.sh
@@ -162,15 +167,15 @@ update src/main.py and update src/subcommand.py
 # --list-overflow=0
 add src/new_module.py, update src/main.py
 
-    - update src/subcommand.py, update src/util/utils.py, remove src/old_module.py
+- update src/subcommand.py, update src/util/utils.py, remove src/old_module.py
 
 # # --------------------------------------------------------------
 
 # defaults: --overflow=50, --list-overflow=72
 add src/new_module.py, update src/main.py
 
-    - update src/subcommand.py, update src/util/utils.py
-    - remove src/old_module.py
+- update src/subcommand.py, update src/util/utils.py
+- remove src/old_module.py
 
 # # --------------------------------------------------------------
 
@@ -187,8 +192,8 @@ add src/new_module.py, update src/main.py
 # --list-overflow=72
 add src/new_module_with_a_very_long_name_that_exceeds_the_list_overflow_limit_but_we_dont_separate_action_prefix_from_filenames_and_we_dont_break_inside_filenames.py
 
-    - update src/main.py, update src/subcommand.py
-    - update src/util/utils.py, remove src/old_module.py
+- update src/main.py, update src/subcommand.py, update src/util/utils.py
+- remove src/old_module.py
 ```
 
 ```bash
@@ -196,8 +201,8 @@ add src/new_module_with_a_very_long_name_that_exceeds_the_list_overflow_limit_bu
 # --list-overflow=72
 add "src/new_module_with_a_very_long_name with spaces that_exceeds_the_list_overflow_limit_but_we_dont_separate_action_prefix_from_filenames_and_we_dont_break_inside_filenames.py"
 
-    - update src/main.py, update src/subcommand.py
-    - update src/util/utils.py, remove src/old_module.py
+- update src/main.py, update src/subcommand.py, update src/util/utils.py
+- remove src/old_module.py
 
 # # --------------------------------------------------------------
 
@@ -206,8 +211,8 @@ add "src/new_module_with_a_very_long_name with spaces that_exceeds_the_list_over
 # --quote-char="'"
 add 'src/new_module_with_a_very_long_name with spaces that_exceeds_the_list_overflow_limit_but_we_dont_separate_action_prefix_from_filenames_and_we_dont_break_inside_filenames.py'
 
-    - update src/main.py, update src/subcommand.py
-    - update src/util/utils.py, remove src/old_module.py
+- update src/main.py, update src/subcommand.py, update src/util/utils.py
+- remove src/old_module.py
 ```
 
 ```bash
@@ -215,9 +220,9 @@ add 'src/new_module_with_a_very_long_name with spaces that_exceeds_the_list_over
 # --list-max-items=1
 add src/new_module.py, update src/main.py
 
-    - update src/subcommand.py
-    - update src/util/utils.py
-    - remove src/old_module.py
+- update src/subcommand.py
+- update src/util/utils.py
+- remove src/old_module.py
 ```
 
 ```bash
@@ -227,8 +232,8 @@ add src/new_module.py, update src/main.py
 # --group=1
 add: src/new_module.py
 
-    - update: src/main.py, src/subcommand.py, src/util/helper.py, src/util/utils.py
-    - remove: src/old_module.py
+- update: src/main.py, src/subcommand.py, src/util/helper.py, src/util/utils.py
+- remove: src/old_module.py
 
 # # --------------------------------------------------------------
 
@@ -238,8 +243,8 @@ add: src/new_module.py
 # --group=2
 add src/new_module.py
 
-    - update: src/main.py, src/subcommand.py, src/util/helper.py, src/util/utils.py
-    - remove src/old_module.py
+- update: src/main.py, src/subcommand.py, src/util/helper.py, src/util/utils.py
+- remove src/old_module.py
 
 # # --------------------------------------------------------------
 
@@ -249,8 +254,8 @@ add src/new_module.py
 # --group=3
 add src/new_module.py
 
-    - update: src/main.py, src/subcommand.py, src/util/helper.py, src/util/utils.py
-    - remove src/old_module.py
+- update: src/main.py, src/subcommand.py, src/util/helper.py, src/util/utils.py
+- remove src/old_module.py
 
 # # --------------------------------------------------------------
 
@@ -261,11 +266,11 @@ add src/new_module.py
 # --group=3
 add src/new_module.py
 
-    - update src/main.py
-    - update src/subcommand.py
-    - update src/util/helper.py
-    - update src/util/utils.py
-    - remove src/old_module.py
+- update src/main.py
+- update src/subcommand.py
+- update src/util/helper.py
+- update src/util/utils.py
+- remove src/old_module.py
 
 # # --------------------------------------------------------------
 
@@ -277,11 +282,11 @@ add src/new_module.py
 # --item-action-suffix=':'
 add:src/new_module.py
 
-    - update:src/main.py
-    - update:src/subcommand.py
-    - update:src/util/helper.py
-    - update:src/util/utils.py
-    - remove:src/old_module.py
+- update:src/main.py
+- update:src/subcommand.py
+- update:src/util/helper.py
+- update:src/util/utils.py
+- remove:src/old_module.py
 ```
 
 ## layout rules
@@ -302,6 +307,53 @@ The rules the examples above are generated by:
   separator falls. Two segments read `a and b`; three or more keep the serial comma.
 - **Quoting** applies to a path containing whitespace or the quote character itself;
   an embedded quote character is backslash-escaped.
+
+## summaries
+
+`--summarize[=overflow|always|never]` defaults to `never`; the bare flag supplies
+`overflow`. Overflow mode engages when the ordinary one-line rendering is wider than
+`--overflow`, while always mode engages unconditionally. A summary replaces the first
+line but does not discard information: every action is rendered again in a bulleted
+body using the ordinary list limits. `--exclude-body` is a final postprocessing step
+that keeps only the first line of either message form.
+
+The initial summary retains paths for singleton actions and uses counts for repeated
+actions:
+
+```text
+add 2 files, update CODE_OF_CONDUCT.md, remove 4 files, rename a.c to b.c, copy 2 files, chmod +x scripts/script.sh, chmod -x scripts/script2.sh
+```
+
+If that exceeds `--overflow`, the following candidates are tried in order. Each
+right-to-left step preserves more information than the ones below it:
+
+```text
+add 2 files, update 1 file, remove 4 files, rename 1 file, copy 2 files, chmod 2 files
+add 2 files, update 3 files, remove 4 files, rename 1 file, copy 2 files
+add 4 files, update 3 files, remove 4 files, rename 1 file
+add 4 files, update 3 files, remove 4 files, mv 1 file
+add 4 files, update 3 files, rm 4 files, mv 1 file
+add 4 files, update 3 files, rm 4 files, mv 1
+add 4 files, update 3 files, rm 4, mv 1
+add 4 files, update 3, rm 4, mv 1
+add 4, update 3, rm 4, mv 1
+add 4, update 3, rm 4, R 1
+add 4, update 3, D 4, R 1
+add 4, M 3, D 4, R 1
+A 4, M 3, D 4, R 1
+A 4, M 3, D 4, R1
+A 4, M 3, D4, R1
+A 4, M3, D4, R1
+A4, M3, D4, R1
+A4 M3 D4 R1
+A4M3D4R1
+12
+```
+
+The folds are action counts, not unique-path counts: chmod joins update, copy joins
+add, and the final number is the total number of actions. If its decimal representation
+still does not fit, rendering fails with a usage error rather than exceeding the first
+line limit.
 
 ## configuration
 

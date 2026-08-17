@@ -83,8 +83,8 @@ describe('run', () => {
     expect(await run([], { io, cwd: repo, env })).toBe(0);
     expect(io.out).toBe(
       'add src/new.py, update "a file.md"\n\n' +
-        '    - update src/main.py, remove src/old.py\n' +
-        '    - rename README.md to READYOU.md, chmod +x run.sh\n',
+        '- update src/main.py, remove src/old.py, rename README.md to READYOU.md\n' +
+        '- chmod +x run.sh\n',
     );
   });
 
@@ -113,7 +113,36 @@ describe('run', () => {
   it('spills past --overflow into a list', async () => {
     const io = capture();
     await run(['--overflow=30', '--include', 'src'], { io, cwd: repo, env });
-    expect(io.out).toBe('add src/new.py\n\n    - update src/main.py, remove src/old.py\n');
+    expect(io.out).toBe('add src/new.py\n\n- update src/main.py, remove src/old.py\n');
+  });
+
+  it('writes a summary first line and a complete detailed body', async () => {
+    const io = capture();
+    await run(['--summarize=always', '--overflow=0', '--include', 'src'], {
+      io,
+      cwd: repo,
+      env,
+    });
+    expect(io.out).toBe(
+      'add src/new.py, update src/main.py, remove src/old.py\n\n' +
+        '- add src/new.py, update src/main.py, remove src/old.py\n',
+    );
+  });
+
+  it('applies --exclude-body after summarizing', async () => {
+    const io = capture();
+    await run(['--summarize=always', '--exclude-body', '--overflow=0', '--include', 'src'], {
+      io,
+      cwd: repo,
+      env,
+    });
+    expect(io.out).toBe('add src/new.py, update src/main.py, remove src/old.py\n');
+  });
+
+  it('rejects an unknown summarize mode', async () => {
+    const io = capture();
+    expect(await run(['--summarize=sometimes'], { io, cwd: repo, env })).toBe(2);
+    expect(io.err).toBe('gitcim: --summarize must be one of overflow, always, never\n');
   });
 
   it('refuses an --include path that is not staged', async () => {
@@ -172,14 +201,14 @@ describe('run', () => {
 });
 
 /**
- * Copies get their own repositories, driven through the real git binary. Every
- * case here is one git will only report as a copy under `--find-copies-harder`,
- * so this is what keeps the flag — and the whole `copy` action — honest.
+ * Renames and copies get their own repositories, driven through the real git
+ * binary. The copy cases are ones git will only report as copies under
+ * `--find-copies-harder`, keeping that flag — and the whole `copy` action — honest.
  */
-describe('copy detection', () => {
+describe('rename and copy detection', () => {
   const dirs: string[] = [];
 
-  /** A repository with one committed file, ready for a copy of it to be staged. */
+  /** A repository with one committed file, ready to be renamed or copied. */
   async function base(): Promise<string> {
     const dir = mkdtempSync(join(tmpdir(), 'gitcim-copy-'));
     dirs.push(dir);
@@ -196,6 +225,17 @@ describe('copy detection', () => {
 
   afterAll(() => {
     for (const dir of dirs) rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('lets a rename subsume content edits', async () => {
+    const dir = await base();
+    await runGit(['mv', 'a.txt', 'b.txt'], dir);
+    appendFileSync(join(dir, 'b.txt'), 'a line added after the rename\n');
+    await runGit(['add', '-A'], dir);
+
+    const io = capture();
+    expect(await run([], { io, cwd: dir, env })).toBe(0);
+    expect(io.out).toBe('rename a.txt to b.txt\n');
   });
 
   it('reports `cp a b && git add b` as a copy', async () => {
@@ -476,7 +516,7 @@ describe('--config-edit', () => {
     // The edit is what the next run uses.
     const next = capture();
     await run(['--include', 'src'], { io: next, cwd: repo, env: at });
-    expect(next.out).toBe('add: src/new.py; update: src/main.py\n\n    - remove: src/old.py\n');
+    expect(next.out).toBe('add: src/new.py; update: src/main.py\n\n- remove: src/old.py\n');
 
     rmSync(dir, { recursive: true, force: true });
   });
@@ -584,7 +624,7 @@ describe('--config-print', () => {
     // A flag beats the file it overrode, and says so.
     expect(io.out).toMatch(/## Source: --no-group\n#?group = 0\n/);
     expect(io.out).toMatch(/## Source: --item-separator\nitem-separator = " \| "\n/);
-    expect(io.out).toMatch(/## Source: default\nlist-indent = 4\n/);
+    expect(io.out).toMatch(/## Source: default\nlist-indent = 0\n/);
     expect(io.err).toBe('');
 
     rmSync(dir, { recursive: true, force: true });

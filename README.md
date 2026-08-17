@@ -7,7 +7,7 @@ guessing at intent — `gitcim` reads `git diff --cached` and reports the mechan
 $ git add -A && gitcim
 add src/parser.ts, update src/main.ts
 
-    - remove legacy.ts, rename old.md to new.md, chmod +x run.sh
+- remove legacy.ts, rename old.md to new.md, chmod +x run.sh
 ```
 
 For messages that infer _why_ a change was made, see
@@ -63,9 +63,10 @@ version.
 
 A change can produce two actions: editing a file _and_ flipping its executable bit
 reports both `update` and `chmod +x`. A chmod that changes nothing produces nothing,
-because git does not stage it. A rename or copy that also changed the file reports
-the `rename`/`copy` first and the `update` after it, whatever `--action-order` says,
-since the new path does not exist until then.
+because git does not stage it. A rename subsumes any content edits made during the
+move, while a copy that was also edited reports the `copy` first and the `update`
+after it, whatever `--action-order` says, since the new path does not exist until
+then. A renamed file can still report a separate `chmod` action.
 
 Renames and copies come from git's own detection, asked for explicitly so the message
 does not depend on the repository's `diff.renames`. Copies are looked for the thorough
@@ -91,13 +92,15 @@ to anything less.
 
 ### Layout
 
-| flag                  | default   | effect                                    |
-| --------------------- | --------- | ----------------------------------------- |
-| `--overflow=N`        | 50        | Spill past N columns into a bulleted list |
-| `--list-overflow=N`   | 72        | Max width of a list line                  |
-| `--list-indent=N`     | 4         | Spaces before each bullet                 |
-| `--list-max-items=N`  | unlimited | Max items per list line                   |
-| `--list-max-groups=N` | unlimited | Max groups per list line                  |
+| flag                  | default   | effect                                       |
+| --------------------- | --------- | -------------------------------------------- |
+| `--summarize[=MODE]`  | never     | Summarize on overflow, always, or never      |
+| `--exclude-body`      | off       | Keep only the generated message's first line |
+| `--overflow=N`        | 50        | Spill past N columns into a bulleted list    |
+| `--list-overflow=N`   | 72        | Max width of a list line                     |
+| `--list-indent=N`     | 0         | Spaces before each bullet                    |
+| `--list-max-items=N`  | unlimited | Max items per list line                      |
+| `--list-max-groups=N` | unlimited | Max groups per list line                     |
 
 ```console
 $ gitcim --group=1 --overflow=0
@@ -106,12 +109,45 @@ add: src/new_module.py; update: src/main.py, src/subcommand.py; remove: src/old_
 $ gitcim
 add src/new_module.py, update src/main.py
 
-    - update src/subcommand.py, update src/util/utils.py
-    - remove src/old_module.py
+- update src/subcommand.py, update src/util/utils.py
+- remove src/old_module.py
 ```
 
 Packing is greedy and measures the line it is about to print. A single item is never
 broken, so an unusually long path simply overruns the limit.
+
+### Summaries
+
+Bare `--summarize` means `--summarize=overflow`: summarize only when the ordinary
+one-line message would exceed `--overflow`. `always` always summarizes and `never`
+never does. When summarization engages, line one is the summary and the body still
+contains every detailed action:
+
+```text
+add 2 files, update CODE_OF_CONDUCT.md, remove 4 files, rename a.c to b.c, copy 2 files, chmod +x scripts/script.sh, chmod -x scripts/script2.sh
+
+- add src/a.c, add src/b.c, update CODE_OF_CONDUCT.md, remove old-1.c
+- remove old-2.c, remove old-3.c, remove old-4.c, rename a.c to b.c
+- copy source-1.c to copy-1.c, copy source-2.c to copy-2.c
+- chmod +x scripts/script.sh, chmod -x scripts/script2.sh
+```
+
+If the summary itself exceeds `--overflow`, gitcim progressively compresses from
+right to left. It converts paths to counts, folds chmods into updates and copies into
+adds, shortens labels and units, uses Git status letters, removes separators, and
+finally falls back to the total action count. Representative forms are:
+
+```text
+add 2 files, update 1 file, remove 4 files, rename 1 file, copy 2 files, chmod 2 files
+add 4 files, update 3 files, remove 4 files, rename 1 file
+add 4, update 3, rm 4, mv 1
+A 4, M 3, D 4, R 1
+A4M3D4R1
+12
+```
+
+If even the total does not fit, gitcim exits with a usage error. `--exclude-body` is
+applied last and truncates either a summarized or ordinary message to its first line.
 
 `devdocs/PLAN.md` carries the full set of worked examples; each one is a test case in
 `tests/spec-examples.test.ts`.

@@ -169,6 +169,13 @@ export function coerce(
       return raw === true;
     case 'string':
       return String(raw);
+    case 'choice': {
+      const value = String(raw);
+      if (!spec.values.includes(value)) {
+        throw new GitcimError(`--${spec.flag} must be one of ${spec.values.join(', ')}`, 2);
+      }
+      return value;
+    }
     case 'order':
       try {
         return parseActionOrder(String(raw));
@@ -183,6 +190,23 @@ export function coerce(
       return value;
     }
   }
+}
+
+/** Supply the declared value for choice flags used without `=VALUE`. */
+export function expandBareChoices(argv: string[]): string[] {
+  const bare = new Map(
+    OPTION_SPECS.flatMap((spec) =>
+      spec.kind === 'choice' && spec.bare !== undefined ? [[`--${spec.flag}`, spec.bare]] : [],
+    ),
+  );
+  let literal = false;
+
+  return argv.map((token) => {
+    if (token === '--') literal = true;
+    if (literal) return token;
+    const value = bare.get(token);
+    return value === undefined ? token : `${token}=${value}`;
+  });
 }
 
 /** Turn parsed flag values into formatting overrides. */
@@ -223,7 +247,7 @@ export function parseArgsOptions(): NonNullable<ParseArgsConfig['options']> {
 
 /** Parse a full argv tail into file lists plus flag values. */
 export function parseCliArgs(argv: string[]): ParsedArgs {
-  const { include, exclude, rest } = extractFileLists(argv);
+  const { include, exclude, rest } = extractFileLists(expandBareChoices(argv));
 
   try {
     const { values } = parseArgs({

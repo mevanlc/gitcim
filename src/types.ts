@@ -4,6 +4,8 @@ export type ActionKind = 'add' | 'update' | 'remove' | 'rename' | 'copy' | 'chmo
 /** The `--action-order` slots. Both chmod kinds share the `chmod` slot. */
 export type ActionSlot = 'add' | 'update' | 'remove' | 'rename' | 'copy' | 'chmod';
 
+export type SummarizeMode = 'overflow' | 'always' | 'never';
+
 export interface Item {
   kind: ActionKind;
   /** Path after the change. */
@@ -41,6 +43,10 @@ export interface Options {
   groupActionSuffix: string;
   renameSeparator: string;
   quoteChar: string;
+  /** When to replace the first line with a count-oriented summary. */
+  summarize: SummarizeMode;
+  /** Keep only the first line of the generated message. */
+  excludeBody: boolean;
   /** Max width of the first line before spilling into a list. 0 disables. */
   overflow: number;
   /** Max width of a list line, indent and bullet included. 0 means unlimited. */

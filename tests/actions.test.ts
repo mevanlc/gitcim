@@ -68,16 +68,16 @@ describe('toItems', () => {
     expect(item).toEqual({ kind: 'rename', path: 'new.md', oldPath: 'old.md' });
   });
 
-  it('reports a rename that also changed content as both, rename first', () => {
+  it('lets a rename subsume content changes', () => {
     const items = toItems([entry({ status: 'R', path: 'new.md', oldPath: 'old.md' })]);
-    expect(kinds(items)).toEqual(['rename new.md', 'update new.md']);
+    expect(kinds(items)).toEqual(['rename new.md']);
   });
 
   it('still reports a chmod carried through a rename', () => {
     const items = toItems([
       entry({ status: 'R', path: 'new.sh', oldPath: 'old.sh', newMode: '100755' }),
     ]);
-    expect(kinds(items)).toEqual(['rename new.sh', 'update new.sh', 'chmod+x new.sh']);
+    expect(kinds(items)).toEqual(['rename new.sh', 'chmod+x new.sh']);
   });
 
   it('reports a mode-only change as chmod alone', () => {
@@ -147,15 +147,15 @@ describe('sortItems', () => {
     ]);
   });
 
-  it('keeps each renamed path with its own follow-up actions', () => {
-    // Two renames, one of which also changed content: the update belongs to x,
-    // and must not be ranked as an ordinary update ahead of either rename.
+  it('keeps each copied path with its own follow-up update', () => {
+    // Two copies, one of which also changed content: the update belongs to x,
+    // and must not be ranked as an ordinary update ahead of either copy.
     const items = toItems([
-      entry({ status: 'R', path: 'x.md', oldPath: 'old_x.md' }),
-      entry({ status: 'R', path: 'w.md', oldPath: 'old_w.md', newSha: 'aaaaaaa' }),
+      entry({ status: 'C', path: 'x.md', oldPath: 'old_x.md' }),
+      entry({ status: 'C', path: 'w.md', oldPath: 'old_w.md', newSha: 'aaaaaaa' }),
       entry({ status: 'M', path: 'm.md' }),
     ]);
-    expect(kinds(items)).toEqual(['update m.md', 'rename w.md', 'rename x.md', 'update x.md']);
+    expect(kinds(items)).toEqual(['update m.md', 'copy w.md', 'copy x.md', 'update x.md']);
   });
 
   it('does not mutate its input', () => {

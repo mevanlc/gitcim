@@ -64,6 +64,11 @@ describe('parseCliArgs', () => {
     expect(parseCliArgs(['-v']).values.version).toBe(true);
   });
 
+  it('treats bare --summarize as --summarize=overflow', () => {
+    expect(parseCliArgs(['--summarize']).values.summarize).toBe('overflow');
+    expect(parseCliArgs(['--summarize=always']).values.summarize).toBe('always');
+  });
+
   it('rejects an unknown flag with exit code 2', () => {
     expect(() => parseCliArgs(['--nope'])).toThrow(GitcimError);
     try {
@@ -133,6 +138,15 @@ describe('buildFormat', () => {
 
   it('accepts an explicit --and', () => {
     expect(buildFormat({ and: true }).and).toBe(true);
+  });
+
+  it('accepts summarize modes and rejects anything else', () => {
+    expect(buildFormat({ summarize: 'overflow' }).summarize).toBe('overflow');
+    expect(buildFormat({ summarize: 'always' }).summarize).toBe('always');
+    expect(buildFormat({ summarize: 'never' }).summarize).toBe('never');
+    expect(() => buildFormat({ summarize: 'sometimes' })).toThrow(
+      /--summarize must be one of overflow, always, never/,
+    );
   });
 
   it('lets --no-oxford-and win over --oxford-and', () => {

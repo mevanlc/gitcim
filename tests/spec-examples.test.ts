@@ -210,7 +210,7 @@ const CASES: Case[] = [
     expected: [
       'add src/new_module.py, update src/main.py',
       '',
-      '    - update src/subcommand.py, update src/util/utils.py, remove src/old_module.py',
+      '- update src/subcommand.py, update src/util/utils.py, remove src/old_module.py',
     ].join('\n'),
   },
   {
@@ -219,8 +219,8 @@ const CASES: Case[] = [
     expected: [
       'add src/new_module.py, update src/main.py',
       '',
-      '    - update src/subcommand.py, update src/util/utils.py',
-      '    - remove src/old_module.py',
+      '- update src/subcommand.py, update src/util/utils.py',
+      '- remove src/old_module.py',
     ].join('\n'),
   },
   {
@@ -247,8 +247,8 @@ const CASES: Case[] = [
     expected: [
       `add ${LONG_NAME}`,
       '',
-      '    - update src/main.py, update src/subcommand.py',
-      '    - update src/util/utils.py, remove src/old_module.py',
+      '- update src/main.py, update src/subcommand.py, update src/util/utils.py',
+      '- remove src/old_module.py',
     ].join('\n'),
   },
   {
@@ -264,8 +264,8 @@ const CASES: Case[] = [
     expected: [
       `add "${SPACED_LONG_NAME}"`,
       '',
-      '    - update src/main.py, update src/subcommand.py',
-      '    - update src/util/utils.py, remove src/old_module.py',
+      '- update src/main.py, update src/subcommand.py, update src/util/utils.py',
+      '- remove src/old_module.py',
     ].join('\n'),
   },
   {
@@ -281,8 +281,8 @@ const CASES: Case[] = [
     expected: [
       `add '${SPACED_LONG_NAME}'`,
       '',
-      '    - update src/main.py, update src/subcommand.py',
-      '    - update src/util/utils.py, remove src/old_module.py',
+      '- update src/main.py, update src/subcommand.py, update src/util/utils.py',
+      '- remove src/old_module.py',
     ].join('\n'),
   },
   {
@@ -292,9 +292,9 @@ const CASES: Case[] = [
     expected: [
       'add src/new_module.py, update src/main.py',
       '',
-      '    - update src/subcommand.py',
-      '    - update src/util/utils.py',
-      '    - remove src/old_module.py',
+      '- update src/subcommand.py',
+      '- update src/util/utils.py',
+      '- remove src/old_module.py',
     ].join('\n'),
   },
   {
@@ -304,8 +304,8 @@ const CASES: Case[] = [
     expected: [
       'add: src/new_module.py',
       '',
-      '    - update: src/main.py, src/subcommand.py, src/util/helper.py, src/util/utils.py',
-      '    - remove: src/old_module.py',
+      '- update: src/main.py, src/subcommand.py, src/util/helper.py, src/util/utils.py',
+      '- remove: src/old_module.py',
     ].join('\n'),
   },
   {
@@ -315,8 +315,8 @@ const CASES: Case[] = [
     expected: [
       'add src/new_module.py',
       '',
-      '    - update: src/main.py, src/subcommand.py, src/util/helper.py, src/util/utils.py',
-      '    - remove src/old_module.py',
+      '- update: src/main.py, src/subcommand.py, src/util/helper.py, src/util/utils.py',
+      '- remove src/old_module.py',
     ].join('\n'),
   },
   {
@@ -326,8 +326,8 @@ const CASES: Case[] = [
     expected: [
       'add src/new_module.py',
       '',
-      '    - update: src/main.py, src/subcommand.py, src/util/helper.py, src/util/utils.py',
-      '    - remove src/old_module.py',
+      '- update: src/main.py, src/subcommand.py, src/util/helper.py, src/util/utils.py',
+      '- remove src/old_module.py',
     ].join('\n'),
   },
   {
@@ -337,11 +337,11 @@ const CASES: Case[] = [
     expected: [
       'add src/new_module.py',
       '',
-      '    - update src/main.py',
-      '    - update src/subcommand.py',
-      '    - update src/util/helper.py',
-      '    - update src/util/utils.py',
-      '    - remove src/old_module.py',
+      '- update src/main.py',
+      '- update src/subcommand.py',
+      '- update src/util/helper.py',
+      '- update src/util/utils.py',
+      '- remove src/old_module.py',
     ].join('\n'),
   },
   {
@@ -358,11 +358,11 @@ const CASES: Case[] = [
     expected: [
       'add:src/new_module.py',
       '',
-      '    - update:src/main.py',
-      '    - update:src/subcommand.py',
-      '    - update:src/util/helper.py',
-      '    - update:src/util/utils.py',
-      '    - remove:src/old_module.py',
+      '- update:src/main.py',
+      '- update:src/subcommand.py',
+      '- update:src/util/helper.py',
+      '- update:src/util/utils.py',
+      '- remove:src/old_module.py',
     ].join('\n'),
   },
 ];

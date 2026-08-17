@@ -57,6 +57,14 @@ export type OptionSpec =
       negatable?: string;
     })
   | (SpecBase & {
+      kind: 'choice';
+      key: KeysOfType<string>;
+      default: string;
+      values: readonly string[];
+      /** Value supplied when the flag appears without `=VALUE`. */
+      bare?: string;
+    })
+  | (SpecBase & {
       kind: 'order';
       key: 'actionOrder';
       default: readonly ActionSlot[];
@@ -165,6 +173,25 @@ export const OPTION_SPECS = [
     help: `Order of ${ACTION_SLOTS.join(', ')}`,
   },
   {
+    kind: 'choice',
+    key: 'summarize',
+    flag: 'summarize',
+    default: 'never',
+    values: ['overflow', 'always', 'never'],
+    bare: 'overflow',
+    section: 'Layout',
+    help: 'Summarize paths on overflow, always, or never',
+  },
+  {
+    kind: 'boolean',
+    key: 'excludeBody',
+    flag: 'exclude-body',
+    default: false,
+    defaultLabel: 'off',
+    section: 'Layout',
+    help: 'Keep only the first line of the generated message',
+  },
+  {
     kind: 'count',
     key: 'overflow',
     flag: 'overflow',
@@ -189,7 +216,7 @@ export const OPTION_SPECS = [
     key: 'listIndent',
     flag: 'list-indent',
     placeholder: 'N',
-    default: 4,
+    default: 0,
     section: 'Layout',
     help: 'Spaces before each list bullet',
   },
@@ -233,7 +260,12 @@ export const DEFAULT_OPTIONS: Options = Object.freeze(
 
 /** How a flag is written in help and in the config file: `--list-indent=N`, `--and, --no-and`. */
 export function flagSyntax(spec: OptionSpec): string {
-  const value = spec.kind === 'boolean' ? '' : `=${spec.placeholder}`;
+  const value =
+    spec.kind === 'boolean'
+      ? ''
+      : spec.kind === 'choice'
+        ? `[=${spec.values.join('|')}]`
+        : `=${spec.placeholder}`;
   const negated = 'negatable' in spec && spec.negatable ? `, --${spec.negatable}` : '';
   return `--${spec.flag}${value}${negated}`;
 }

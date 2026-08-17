@@ -48,11 +48,12 @@ describe('configLocation', () => {
 
 describe('parseConfig', () => {
   it('maps flag names onto Options keys', () => {
-    expect(parseConfig('item-separator = " "\nlist-max-items = 2\nand = true\n', 'x')).toEqual({
-      itemSeparator: ' ',
-      listMaxItems: 2,
-      and: true,
-    });
+    expect(
+      parseConfig(
+        'item-separator = " "\nlist-max-items = 2\nand = true\nsummarize = "always"\n',
+        'x',
+      ),
+    ).toEqual({ itemSeparator: ' ', listMaxItems: 2, and: true, summarize: 'always' });
   });
 
   it('takes the action order as an array and fills in what is missing', () => {
@@ -71,6 +72,7 @@ describe('parseConfig', () => {
     ['group = -1', 'x: group must be a non-negative integer'],
     ['and = 1', 'x: and must be true or false'],
     ['item-separator = 4', 'x: item-separator must be a string'],
+    ['summarize = "sometimes"', 'x: summarize must be one of "overflow", "always", "never"'],
     ['action-order = "add"', 'x: action-order must be an array of action names'],
     ['action-order = ["nope"]', 'x: unknown action "nope"'],
     ['action-order = ["add", "add"]', 'x: duplicate action "add"'],
@@ -188,7 +190,7 @@ describe('renderEffectiveConfig', () => {
   it('attributes every setting, defaulting to "default"', () => {
     const text = renderEffectiveConfig(options, new Map([['group', '--group']]));
     expect(text).toContain('## Source: --group\ngroup = 2\n');
-    expect(text).toContain('## Source: default\nlist-indent = 4\n');
+    expect(text).toContain('## Source: default\nlist-indent = 0\n');
     expect(text.match(/^## Source: /gm)?.length).toBe(OPTION_SPECS.length);
   });
 });
@@ -254,6 +256,10 @@ describe('configSchema', () => {
     const properties = (configSchema() as { properties: Record<string, Record<string, unknown>> })
       .properties;
     expect(properties['list-indent']).toMatchObject({ type: 'integer', minimum: 0 });
+    expect(properties.summarize).toMatchObject({
+      type: 'string',
+      enum: ['overflow', 'always', 'never'],
+    });
     expect(properties['action-order']).toMatchObject({
       type: 'array',
       uniqueItems: true,
