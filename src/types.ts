@@ -5,6 +5,7 @@ export type ActionKind = 'add' | 'update' | 'remove' | 'rename' | 'copy' | 'chmo
 export type ActionSlot = 'add' | 'update' | 'remove' | 'rename' | 'copy' | 'chmod';
 
 export type SummarizeMode = 'overflow' | 'always' | 'never';
+export type ExcludeBodyMode = 'always' | 'summarized' | 'never';
 
 export interface Item {
   kind: ActionKind;
@@ -45,8 +46,8 @@ export interface Options {
   quoteChar: string;
   /** When to replace the first line with a count-oriented summary. */
   summarize: SummarizeMode;
-  /** Keep only the first line of the generated message. */
-  excludeBody: boolean;
+  /** When to discard the body and keep only the first line. */
+  excludeBody: ExcludeBodyMode;
   /** Group body items by action. Empty disables; otherwise this prefixes continuation lines. */
   groupGroup: string;
   /** Appended to each nonfinal physical line in a grouped action. */

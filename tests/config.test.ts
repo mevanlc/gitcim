@@ -260,6 +260,10 @@ describe('configSchema', () => {
       type: 'string',
       enum: ['overflow', 'always', 'never'],
     });
+    expect(properties['exclude-body']).toMatchObject({
+      type: 'string',
+      enum: ['always', 'summarized', 'never'],
+    });
     expect(properties['action-order']).toMatchObject({
       type: 'array',
       uniqueItems: true,

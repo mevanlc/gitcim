@@ -92,7 +92,7 @@ describe('summary rendering', () => {
   });
 
   it('applies --exclude-body after generating either message form', () => {
-    expect(render(SAMPLE, { summarize: 'always', overflow: 50, excludeBody: true })).toBe(
+    expect(render(SAMPLE, { summarize: 'always', overflow: 50, excludeBody: 'always' })).toBe(
       'add 4 files, update 3 files, rm 4 files, mv 1 file',
     );
     expect(
@@ -101,8 +101,25 @@ describe('summary rendering', () => {
           { kind: 'update', path: 'a' },
           { kind: 'update', path: 'b' },
         ],
-        { overflow: 8, excludeBody: true },
+        { overflow: 8, excludeBody: 'always' },
       ),
     ).toBe('update a');
+  });
+
+  it('applies --exclude-body=summarized only when summarization engages', () => {
+    expect(
+      render(SAMPLE, { summarize: 'always', overflow: 50, excludeBody: 'summarized' }),
+    ).toBe('add 4 files, update 3 files, rm 4 files, mv 1 file');
+
+    const twoItems: Item[] = [
+      { kind: 'update', path: 'a' },
+      { kind: 'update', path: 'b' },
+    ];
+    expect(render(twoItems, { overflow: 8, excludeBody: 'summarized' })).toBe(
+      'update a\n\n- update b',
+    );
+    expect(
+      render(SAMPLE, { summarize: 'never', overflow: 50, excludeBody: 'summarized' }),
+    ).toContain('- remove d1');
   });
 });

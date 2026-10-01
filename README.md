@@ -95,7 +95,7 @@ to anything less.
 | flag                       | default   | effect                                          |
 | -------------------------- | --------- | ----------------------------------------------- |
 | `--summarize[=MODE]`       | never     | Summarize on overflow, always, or never         |
-| `--exclude-body`           | off       | Keep only the generated message's first line    |
+| `--exclude-body[=MODE]`    | never     | Keep only first line always, when summarized, or never |
 | `--group-group[=S]`        | off       | Group body paths; S prefixes continuation lines |
 | `--group-group-cont=S`     | `""`      | After each grouped body line that continues     |
 | `--group-group-item-sep=S` | `", "`    | Between paths on one grouped body line          |
@@ -154,8 +154,10 @@ A4M3D4R1
 12
 ```
 
-If even the total does not fit, gitcim exits with a usage error. `--exclude-body` is
-applied last and truncates either a summarized or ordinary message to its first line.
+If even the total does not fit, gitcim exits with a usage error. Bare `--exclude-body`
+means `--exclude-body=always` and truncates either message form to its first line.
+`--exclude-body=summarized` keeps the bulleted body for detailed messages but drops it
+when summarization engages.
 
 `devdocs/PLAN.md` carries the full set of worked examples; each one is a test case in
 `tests/spec-examples.test.ts`.

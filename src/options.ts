@@ -185,13 +185,14 @@ export const OPTION_SPECS = [
     help: 'Summarize paths on overflow, always, or never',
   },
   {
-    kind: 'boolean',
+    kind: 'choice',
     key: 'excludeBody',
     flag: 'exclude-body',
-    default: false,
-    defaultLabel: 'off',
+    default: 'never',
+    values: ['always', 'summarized', 'never'],
+    bare: 'always',
     section: 'Layout',
-    help: 'Keep only the first line of the generated message',
+    help: 'Keep only the first line always, when summarized, or never',
   },
   {
     kind: 'string',

@@ -139,6 +139,28 @@ describe('run', () => {
     expect(io.out).toBe('add src/new.py, update src/main.py, remove src/old.py\n');
   });
 
+  it('supports --exclude-body=summarized', async () => {
+    const io1 = capture();
+    await run(
+      ['--summarize=always', '--exclude-body=summarized', '--overflow=0', '--include', 'src'],
+      { io: io1, cwd: repo, env },
+    );
+    expect(io1.out).toBe('add src/new.py, update src/main.py, remove src/old.py\n');
+
+    const io2 = capture();
+    await run(
+      ['--summarize=never', '--exclude-body=summarized', '--overflow=20', '--include', 'src'],
+      { io: io2, cwd: repo, env },
+    );
+    expect(io2.out).toContain('\n\n- ');
+  });
+
+  it('rejects an unknown exclude-body mode', async () => {
+    const io = capture();
+    expect(await run(['--exclude-body=sometimes'], { io, cwd: repo, env })).toBe(2);
+    expect(io.err).toBe('gitcim: --exclude-body must be one of always, summarized, never\n');
+  });
+
   it('rejects an unknown summarize mode', async () => {
     const io = capture();
     expect(await run(['--summarize=sometimes'], { io, cwd: repo, env })).toBe(2);

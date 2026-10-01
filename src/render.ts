@@ -401,5 +401,9 @@ export function render(items: Item[], overrides: Partial<Options> = {}): string 
   const message = summarize
     ? `${summarizeItems(items, opts)}\n\n${renderBody(items, opts)}`
     : renderDetailed(items, opts);
-  return opts.excludeBody ? (message.split('\n', 1)[0] ?? '') : message;
+  const shouldExclude =
+    opts.excludeBody === 'always' ||
+    (opts.excludeBody as unknown) === true ||
+    (opts.excludeBody === 'summarized' && summarize);
+  return shouldExclude ? (message.split('\n', 1)[0] ?? '') : message;
 }

@@ -27,7 +27,7 @@ describe('OPTION_SPECS', () => {
       quoteChar: '"',
       actionOrder: ['add', 'update', 'remove', 'rename', 'copy', 'chmod'],
       summarize: 'never',
-      excludeBody: false,
+      excludeBody: 'never',
       groupGroup: '',
       groupGroupCont: '',
       groupGroupItemSeparator: ', ',
